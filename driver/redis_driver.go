@@ -53,7 +53,9 @@ func(this *RedisDriver)heartBear(nodeId string){
 	tickers := time.NewTicker(this.timeout/2)
 	for range tickers.C {
 		_,err := this.do("EXPIRE",key,int(this.timeout/time.Second))
-		panic(err)
+		if(err != nil){
+			panic(err)
+		}
 	}
 }
 
