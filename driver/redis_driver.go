@@ -34,12 +34,10 @@ func(this *RedisDriver)Open(dataSourceOption DriverConnOpt){
 
 func(this *RedisDriver)getKeyPre() string{
 	return  GlobalKeyPrefix+this.serverName+":";
-
 }
 
 func(this *RedisDriver)SetTimeout(timeout time.Duration){
 	this.timeout = timeout
-
 }
 
 func(this *RedisDriver)SetHeartBeat(nodeId string){

@@ -5,7 +5,6 @@ import (
 	"github.com/LibiChai/dcron/consistenthash"
 	"github.com/LibiChai/dcron/driver"
 	"time"
-	"fmt"
 )
 const defaultReplicas = 50
 const defaultDuration  = 10
@@ -57,14 +56,11 @@ func (this *NodePool)initPool(){
 }
 
 func (this *NodePool)updatePool(){
-	fmt.Println("update pool")
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	nodes := this.Driver.GetNodeList(this.serverName)
-	fmt.Println("redis nodes",nodes)
 	this.nodes = consistenthash.New(this.opts.Replicas, this.opts.HashFn)
 	for _, node := range nodes {
-		fmt.Println(node)
 		this.nodes.Add(node)
 	}
 }
