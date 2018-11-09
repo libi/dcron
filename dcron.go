@@ -4,7 +4,6 @@ import (
 	"sync"
 	"github.com/robfig/cron"
 	"github.com/LibiChai/dcron/driver"
-	"fmt"
 )
 
 
@@ -44,8 +43,6 @@ func(this *Dcron)AddFunc(jobName,cronStr string,cmd func()){
 }
 
 func(this *Dcron)allowThisNodeRun(jobName string) bool{
-	fmt.Println("nodeid",this.nodePool.NodeId)
-	fmt.Println("allow node id",this.nodePool.PickNodeByJobName(jobName))
 	return this.nodePool.NodeId == this.nodePool.PickNodeByJobName(jobName)
 }
 
