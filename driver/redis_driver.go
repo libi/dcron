@@ -1,9 +1,10 @@
 package driver
 
 import (
+	"errors"
 	"time"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/satori/go.uuid"
 )
 
@@ -13,9 +14,9 @@ type RedisDriver struct {
 	redisClient *redis.Pool
 	timeout time.Duration
 	Key string
-	serverName string
 }
 func(this *RedisDriver)Open(dataSourceOption DriverConnOpt){
+
 	this.redisClient = &redis.Pool{
 		MaxIdle:     100,
 		MaxActive:   100,
@@ -32,8 +33,8 @@ func(this *RedisDriver)Open(dataSourceOption DriverConnOpt){
 
 }
 
-func(this *RedisDriver)getKeyPre() string{
-	return  GlobalKeyPrefix+this.serverName+":";
+func(this *RedisDriver)getKeyPre(serviceName string) string{
+	return  GlobalKeyPrefix+serviceName+":";
 }
 
 func(this *RedisDriver)SetTimeout(timeout time.Duration){
@@ -57,26 +58,15 @@ func(this *RedisDriver)heartBear(nodeId string){
 	}
 }
 
-func(this *RedisDriver)GetNodeList(serverName string) []string{
-	nodes := make([]string,0)
-
-
-	keys,err := redis.ByteSlices(this.do("keys",this.getKeyPre()+"*"))
-	if(err != nil){
-		return nodes
-	}
-	for _,key := range keys{
-		nodes = append(nodes,string(key))
-	}
-	return nodes
+func(this *RedisDriver)GetServiceNodeList(serviceName string) ([]string,error){
+	mathStr := fmt.Sprintf("%s*",this.getKeyPre(serviceName))
+	return this.scan(mathStr)
 }
-func(this *RedisDriver)RegisterNode(serverName string) (nodeId string){
+func(this *RedisDriver)RegisterServiceNode(serviceName string) (nodeId string){
 
-	this.serverName = serverName
+	nodeId = uuid.NewV4().String()
 
-	nodeId = uuid.Must(uuid.NewV4()).String()
-
-	key := this.getKeyPre()+nodeId
+	key := this.getKeyPre(serviceName)+nodeId
 	_,err := this.do("SETEX",key,int(this.timeout/time.Second),nodeId)
 	if(err != nil){
 		return ""
@@ -89,7 +79,30 @@ func (this *RedisDriver)do(command string,params ...interface{}) (interface{},er
 	defer conn.Close()
 	return conn.Do(command,params...)
 }
+func (this *RedisDriver)scan(matchStr string) ([]string,error) {
+	cursor := "0"
+	ret := make([]string,0)
+	for {
+		reply ,err := this.do("scan",cursor,"match",matchStr)
+		if(err != nil){
+			return nil,err
+		}
+		if Reply,ok := reply.([]interface{});ok && len(Reply)==2 {
+			cursor = string(Reply[0].([]byte))
 
+			list := Reply[1].([]interface{})
+			for _,item := range list{
+				ret = append(ret,string(item.([]byte)))
+			}
+			if(cursor == "0"){
+				break
+			}
+		}else{
+			return nil,errors.New("redis scan resp struct error")
+		}
+	}
+	return ret,nil
+}
 func init(){
 	RegisterDriver("redis",new(RedisDriver))
 }

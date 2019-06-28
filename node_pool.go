@@ -9,7 +9,7 @@ import (
 const defaultReplicas = 50
 const defaultDuration  = 10
 type NodePool struct {
-	serverName string
+	serviceName string
 	NodeId string
 
 	mu    sync.Mutex
@@ -31,7 +31,7 @@ func newNodePool(serverName,driverName string, dataSourceOption driver.DriverCon
 	nodePool.Driver.Open(dataSourceOption)
 
 
-	nodePool.serverName = serverName
+	nodePool.serviceName = serverName
 
 	option := PoolOptions{
 		Replicas:defaultReplicas,
@@ -48,7 +48,7 @@ func newNodePool(serverName,driverName string, dataSourceOption driver.DriverCon
 
 func (this *NodePool)initPool(){
 	this.Driver.SetTimeout(defaultDuration*time.Second)
-	this.NodeId = this.Driver.RegisterNode(this.serverName)
+	this.NodeId = this.Driver.RegisterServiceNode(this.serviceName)
 
 	this.Driver.SetHeartBeat(this.NodeId)
 
@@ -58,7 +58,10 @@ func (this *NodePool)initPool(){
 func (this *NodePool)updatePool(){
 	this.mu.Lock()
 	defer this.mu.Unlock()
-	nodes := this.Driver.GetNodeList(this.serverName)
+	nodes ,err := this.Driver.GetServiceNodeList(this.serviceName)
+	if(nodes == nil){
+		panic(err)
+	}
 	this.nodes = consistenthash.New(this.opts.Replicas, this.opts.HashFn)
 	for _, node := range nodes {
 		this.nodes.Add(node)

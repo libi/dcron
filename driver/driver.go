@@ -11,8 +11,8 @@ type Driver interface {
 	Open(dataSourceOption DriverConnOpt)
 	SetHeartBeat(nodeId string)
 	SetTimeout(timeout time.Duration)
-	GetNodeList(serverName string)([]string)
-	RegisterNode(serverName string)(string)
+	GetServiceNodeList(ServiceName string)([]string,error)
+	RegisterServiceNode(ServiceName string)(string)
 }
 
 var (
