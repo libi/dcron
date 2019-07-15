@@ -13,7 +13,7 @@ const defaultDuration = 10
 //NodePool is a node pool
 type NodePool struct {
 	serviceName string
-	NodeID     string
+	NodeID      string
 
 	mu    sync.Mutex
 	nodes *consistenthash.Map
@@ -21,6 +21,7 @@ type NodePool struct {
 	Driver driver.Driver
 	opts   PoolOptions
 }
+
 //PoolOptions is a pool options
 type PoolOptions struct {
 	Replicas int

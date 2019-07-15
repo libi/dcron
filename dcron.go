@@ -5,6 +5,7 @@ import (
 	"github.com/robfig/cron"
 	"sync"
 )
+
 //Dcron is main struct
 type Dcron struct {
 	jobs       map[string]*JobWarpper
@@ -19,6 +20,7 @@ func NewDcronUseRedis(serverName string, dataSourceOption driver.DriverConnOpt) 
 	return NewDcron(serverName, "redis", dataSourceOption)
 
 }
+
 //NewDcron create a Dcron
 func NewDcron(serverName, driverName string, dataSourceOption driver.DriverConnOpt) *Dcron {
 
@@ -29,8 +31,9 @@ func NewDcron(serverName, driverName string, dataSourceOption driver.DriverConnO
 	dcron.nodePool = newNodePool(serverName, driverName, dataSourceOption)
 	return dcron
 }
+
 //AddFunc add a job
-func (d *Dcron) AddFunc(jobName, cronStr string, cmd func())(err error) {
+func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 
 	job := JobWarpper{
 		Name:    jobName,
@@ -45,10 +48,12 @@ func (d *Dcron) AddFunc(jobName, cronStr string, cmd func())(err error) {
 func (d *Dcron) allowThisNodeRun(jobName string) bool {
 	return d.nodePool.NodeID == d.nodePool.PickNodeByJobName(jobName)
 }
+
 //Start start job
 func (d *Dcron) Start() {
 	d.cr.Start()
 }
+
 //Stop stop job
 func (d *Dcron) Stop() {
 	d.cr.Stop()

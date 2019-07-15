@@ -10,12 +10,14 @@ import (
 
 //GlobalKeyPrefix is global redis key preifx
 const GlobalKeyPrefix = "distributed-cron:"
+
 //RedisDriver is redisDriver
 type RedisDriver struct {
 	redisClient *redis.Pool
 	timeout     time.Duration
 	Key         string
 }
+
 //Open open a redis driver
 func (rd *RedisDriver) Open(dataSourceOption DriverConnOpt) {
 
@@ -38,10 +40,12 @@ func (rd *RedisDriver) Open(dataSourceOption DriverConnOpt) {
 func (rd *RedisDriver) getKeyPre(serviceName string) string {
 	return GlobalKeyPrefix + serviceName + ":"
 }
+
 //SetTimeout set redis timeout
 func (rd *RedisDriver) SetTimeout(timeout time.Duration) {
 	rd.timeout = timeout
 }
+
 //SetHeartBeat set herbear
 func (rd *RedisDriver) SetHeartBeat(nodeID string) {
 
@@ -59,11 +63,13 @@ func (rd *RedisDriver) heartBear(nodeID string) {
 		}
 	}
 }
+
 //GetServiceNodeList get a serveice node  list
 func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) {
 	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
 	return rd.scan(mathStr)
 }
+
 //RegisterServiceNode  register a service node
 func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string) {
 
