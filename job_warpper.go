@@ -7,6 +7,7 @@ type JobWarpper struct {
 	CronStr string
 	Func    func()
 }
+
 //Run is run job
 func (job JobWarpper) Run() {
 	//如果该任务分配给了这个节点 则允许执行

@@ -8,6 +8,7 @@ type DriverConnOpt struct {
 	Port     string
 	Password string
 }
+
 //Driver is a driver interface
 type Driver interface {
 	Open(dataSourceOption DriverConnOpt)
@@ -20,6 +21,7 @@ type Driver interface {
 var (
 	drivers = map[string]Driver{}
 )
+
 //RegisterDriver register a driver
 func RegisterDriver(driverName string, driver Driver) {
 	if driver == nil {
@@ -30,6 +32,7 @@ func RegisterDriver(driverName string, driver Driver) {
 	}
 	drivers[driverName] = driver
 }
+
 //GetDriver get a driver
 func GetDriver(driverName string) Driver {
 	return drivers[driverName]
