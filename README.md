@@ -1,4 +1,8 @@
-## 分布式定时任务
+dcron
+==============
+[![Go Report Card](https://goreportcard.com/badge/github.com/LibiChai/dcron)](https://goreportcard.com/report/github.com/LibiChai/dcron)
+
+分布式定时任务库
 
 ### 原理
 
