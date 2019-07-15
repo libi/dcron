@@ -1,61 +1,55 @@
 package dcron
 
 import (
-	"sync"
-	"github.com/robfig/cron"
 	"github.com/LibiChai/dcron/driver"
+	"github.com/robfig/cron"
+	"sync"
 )
-
-
-
+//Dcron is main struct
 type Dcron struct {
-	jobs     map[string]*JobWarpper
-	mu       sync.RWMutex
-	cr       *cron.Cron
+	jobs       map[string]*JobWarpper
+	mu         sync.RWMutex
+	cr         *cron.Cron
 	ServerName string
-	nodePool *NodePool
+	nodePool   *NodePool
 }
 
-func NewDcronUseRedis(serverName string,dataSourceOption driver.DriverConnOpt) *Dcron{
-	return NewDcron(serverName,"redis",dataSourceOption)
+//NewDcronUseRedis use redis driver
+func NewDcronUseRedis(serverName string, dataSourceOption driver.DriverConnOpt) *Dcron {
+	return NewDcron(serverName, "redis", dataSourceOption)
 
 }
-func NewDcron(serverName,driverName string, dataSourceOption driver.DriverConnOpt) *Dcron{
+//NewDcron create a Dcron
+func NewDcron(serverName, driverName string, dataSourceOption driver.DriverConnOpt) *Dcron {
 
 	dcron := new(Dcron)
 	dcron.ServerName = serverName
-	dcron.cr =	cron.New()
+	dcron.cr = cron.New()
 	dcron.jobs = make(map[string]*JobWarpper)
-	dcron.nodePool = newNodePool(serverName,driverName,dataSourceOption)
+	dcron.nodePool = newNodePool(serverName, driverName, dataSourceOption)
 	return dcron
 }
-
-func(this *Dcron)AddFunc(jobName,cronStr string,cmd func()){
+//AddFunc add a job
+func (d *Dcron) AddFunc(jobName, cronStr string, cmd func())(err error) {
 
 	job := JobWarpper{
-		Name:jobName,
-		CronStr:cronStr,
-		Func:cmd,
-		Dcron:this,
+		Name:    jobName,
+		CronStr: cronStr,
+		Func:    cmd,
+		Dcron:   d,
 	}
 
-	this.cr.AddJob(cronStr,job)
+	return d.cr.AddJob(cronStr, job)
 }
 
-func(this *Dcron)allowThisNodeRun(jobName string) bool{
-	return this.nodePool.NodeId == this.nodePool.PickNodeByJobName(jobName)
+func (d *Dcron) allowThisNodeRun(jobName string) bool {
+	return d.nodePool.NodeID == d.nodePool.PickNodeByJobName(jobName)
 }
-
-
-
-func(this *Dcron)Start(){
-	this.cr.Start()
+//Start start job
+func (d *Dcron) Start() {
+	d.cr.Start()
 }
-
-func(this *Dcron)Stop(){
-	this.cr.Stop()
+//Stop stop job
+func (d *Dcron) Stop() {
+	d.cr.Stop()
 }
-
-
-
-
