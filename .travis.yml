@@ -3,6 +3,8 @@ language: go
 go:
   - 1.12.x
 
+services:
+  - redis-server
 # Only clone the most recent commit.
 git:
   depth: 1
