@@ -17,7 +17,7 @@ func TestRedisDriver_Scan(t *testing.T) {
 		"*", "-----", "", "!@#$%^", "1", "false",
 	}
 	for _, str := range testStr {
-		ret, err := rd.Scan(str)
+		ret, err := rd.scan(str)
 		if err != nil {
 			panic(err)
 		}

@@ -3,16 +3,12 @@ package dcron
 import (
 	"fmt"
 	"github.com/LibiChai/dcron/driver"
-	"sync"
 	"testing"
 	"time"
 )
 
 func Test(t *testing.T) {
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
 
 	dcron := NewDcronUseRedis("server1", driver.DriverConnOpt{
 		Host:     "127.0.0.1",
@@ -49,5 +45,7 @@ func Test(t *testing.T) {
 	})
 	dcron2.Start()
 	//运行多个go test 观察任务分配情况
-	wg.Wait()
+
+	//测试20秒后退出
+	time.Sleep(20*time.Second)
 }
