@@ -28,11 +28,14 @@ type PoolOptions struct {
 	HashFn   consistenthash.Hash
 }
 
-func newNodePool(serverName, driverName string, dataSourceOption driver.DriverConnOpt) *NodePool {
+func newNodePool(serverName string, driver driver.Driver) *NodePool {
 
 	nodePool := new(NodePool)
-	nodePool.Driver = driver.GetDriver(driverName)
-	nodePool.Driver.Open(dataSourceOption)
+	nodePool.Driver = driver
+	err := nodePool.Driver.Ping()
+	if err != nil {
+		panic(err)
+	}
 
 	nodePool.serviceName = serverName
 

@@ -1,4 +1,4 @@
-package driver
+package redis
 
 import (
 	"fmt"
@@ -6,13 +6,13 @@ import (
 )
 
 func TestRedisDriver_Scan(t *testing.T) {
-	rd := new(RedisDriver)
-	rd.Open(DriverConnOpt{
-		Host:     "127.0.0.1",
-		Port:     "6379",
-		Password: "",
+	rd, err := NewDriver(&Conf{
+		Host: "127.0.0.1",
+		Port: 6379,
 	})
-
+	if err != nil {
+		return
+	}
 	testStr := []string{
 		"*", "-----", "", "!@#$%^", "1", "false",
 	}
