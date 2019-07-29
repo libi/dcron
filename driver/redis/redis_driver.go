@@ -1,4 +1,4 @@
-package driver
+package redis
 
 import (
 	"errors"
@@ -8,35 +8,51 @@ import (
 	"time"
 )
 
-//GlobalKeyPrefix is global redis key preifx
+// GlobalKeyPrefix is global redis key preifx
 const GlobalKeyPrefix = "distributed-cron:"
+// RedisConf is redis config
+type Conf struct {
+	Host     string
+	Port     int
+	Password string
+}
 
-//RedisDriver is redisDriver
+// RedisDriver is redisDriver
 type RedisDriver struct {
+	conf        *Conf
 	redisClient *redis.Pool
 	timeout     time.Duration
 	Key         string
 }
-
-//Open open a redis driver
-func (rd *RedisDriver) Open(dataSourceOption DriverConnOpt) {
-
-	rd.redisClient = &redis.Pool{
+// NewDriver return a redis driver
+func NewDriver(conf *Conf) (*RedisDriver, error) {
+	rd := &redis.Pool{
 		MaxIdle:     100,
 		MaxActive:   100,
 		IdleTimeout: 5 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", dataSourceOption.Host, dataSourceOption.Port),
-				redis.DialConnectTimeout(time.Second*5), redis.DialPassword(dataSourceOption.Password))
+			c, err := redis.Dial("tcp", fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+				redis.DialConnectTimeout(time.Second*5), redis.DialPassword(conf.Password))
 			if err != nil {
 				panic(err)
 			}
 			return c, nil
 		},
 	}
-
+	return &RedisDriver{
+		conf:        conf,
+		redisClient: rd,
+	}, nil
 }
-
+// Ping is check redis valid
+func (rd *RedisDriver) Ping() error {
+	conn := rd.redisClient.Get()
+	defer conn.Close()
+	if _, err := conn.Do("SET", "ping", "pong"); err != nil {
+		return err
+	}
+	return nil
+}
 func (rd *RedisDriver) getKeyPre(serviceName string) string {
 	return GlobalKeyPrefix + serviceName + ":"
 }
@@ -111,7 +127,4 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 		}
 	}
 	return ret, nil
-}
-func init() {
-	RegisterDriver("redis", new(RedisDriver))
 }

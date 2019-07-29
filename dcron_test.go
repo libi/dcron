@@ -2,25 +2,19 @@ package dcron
 
 import (
 	"fmt"
-	"github.com/LibiChai/dcron/driver"
+	"github.com/LibiChai/dcron/driver/redis"
 	"testing"
 	"time"
 )
 
 func Test(t *testing.T) {
 
-
-	dcron := NewDcronUseRedis("server1", driver.DriverConnOpt{
-		Host:     "127.0.0.1",
-		Port:     "6379",
-		Password: "",
+	drv, _ := redis.NewDriver(&redis.Conf{
+		Host: "127.0.0.1",
+		Port: 6379,
 	})
-
-	dcron2 := NewDcronUseRedis("server2", driver.DriverConnOpt{
-		Host:     "127.0.0.1",
-		Port:     "6379",
-		Password: "",
-	})
+	dcron := NewDcron("server1", drv)
+	dcron2 := NewDcron("server2", drv)
 
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 	dcron.AddFunc("s1 test1", "*/3 * * * *", func() {
@@ -47,5 +41,5 @@ func Test(t *testing.T) {
 	//运行多个go test 观察任务分配情况
 
 	//测试20秒后退出
-	time.Sleep(20*time.Second)
+	time.Sleep(20 * time.Second)
 }

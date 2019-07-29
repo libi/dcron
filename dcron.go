@@ -1,7 +1,7 @@
 package dcron
 
 import (
-	"github.com/LibiChai/dcron/driver"
+	. "github.com/LibiChai/dcron/driver"
 	"github.com/robfig/cron"
 	"sync"
 )
@@ -15,20 +15,14 @@ type Dcron struct {
 	nodePool   *NodePool
 }
 
-//NewDcronUseRedis use redis driver
-func NewDcronUseRedis(serverName string, dataSourceOption driver.DriverConnOpt) *Dcron {
-	return NewDcron(serverName, "redis", dataSourceOption)
-
-}
-
 //NewDcron create a Dcron
-func NewDcron(serverName, driverName string, dataSourceOption driver.DriverConnOpt) *Dcron {
+func NewDcron(serverName string, driver Driver) *Dcron {
 
 	dcron := new(Dcron)
 	dcron.ServerName = serverName
 	dcron.cr = cron.New()
 	dcron.jobs = make(map[string]*JobWarpper)
-	dcron.nodePool = newNodePool(serverName, driverName, dataSourceOption)
+	dcron.nodePool = newNodePool(serverName, driver)
 	return dcron
 }
 
