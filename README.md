@@ -20,13 +20,13 @@ dcron
 
 ### 使用说明
 
-1.指定服务名，使用redis配置初始化dcron。服务名为执行相同任务的单元
+1.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
 ```golang
-   dcron := NewDcronUseRedis("服务名称",driver.DriverConnOpt{
-   		Host:"127.0.0.1",
-   		Port:"6379",
-   		Password:"",
-   })
+  drv, _ := redis.NewDriver(&redis.Conf{
+  		Host: "127.0.0.1",
+  		Port: 6379,
+  })
+  dcron := NewDcron("server1", drv)
 ```
 2.使用cron语法添加任务，需要指定任务名。任务名作为任务的唯一标识，必须保证唯一。
 ```golang
