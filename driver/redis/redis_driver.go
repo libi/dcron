@@ -10,6 +10,7 @@ import (
 
 // GlobalKeyPrefix is global redis key preifx
 const GlobalKeyPrefix = "distributed-cron:"
+
 // RedisConf is redis config
 type Conf struct {
 	Host     string
@@ -24,6 +25,7 @@ type RedisDriver struct {
 	timeout     time.Duration
 	Key         string
 }
+
 // NewDriver return a redis driver
 func NewDriver(conf *Conf) (*RedisDriver, error) {
 	rd := &redis.Pool{
@@ -44,6 +46,7 @@ func NewDriver(conf *Conf) (*RedisDriver, error) {
 		redisClient: rd,
 	}, nil
 }
+
 // Ping is check redis valid
 func (rd *RedisDriver) Ping() error {
 	conn := rd.redisClient.Get()
