@@ -1,6 +1,7 @@
 package dcron
 
 import (
+	"errors"
 	. "github.com/LibiChai/dcron/driver"
 	"github.com/robfig/cron"
 	"sync"
@@ -29,13 +30,16 @@ func NewDcron(serverName string, driver Driver) *Dcron {
 //AddFunc add a job
 func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 
+	if _,ok := d.jobs[jobName]; ok{
+		return errors.New("jobName already exist")
+	}
 	job := JobWarpper{
 		Name:    jobName,
 		CronStr: cronStr,
 		Func:    cmd,
 		Dcron:   d,
 	}
-
+	d.jobs[jobName] = &job
 	return d.cr.AddJob(cronStr, job)
 }
 
