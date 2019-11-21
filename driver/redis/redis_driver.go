@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
-	"github.com/satori/go.uuid"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -92,7 +92,7 @@ func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) 
 //RegisterServiceNode  register a service node
 func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string) {
 
-	nodeID = uuid.NewV4().String()
+	nodeID = uuid.New().String()
 
 	key := rd.getKeyPre(serviceName) + nodeID
 	_, err := rd.do("SETEX", key, int(rd.timeout/time.Second), nodeID)
