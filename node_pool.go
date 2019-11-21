@@ -20,6 +20,8 @@ type NodePool struct {
 
 	Driver driver.Driver
 	opts   PoolOptions
+
+	dcron *Dcron
 }
 
 //PoolOptions is a pool options
@@ -28,7 +30,7 @@ type PoolOptions struct {
 	HashFn   consistenthash.Hash
 }
 
-func newNodePool(serverName string, driver driver.Driver) *NodePool {
+func newNodePool(serverName string, driver driver.Driver, dcron *Dcron) *NodePool {
 
 	nodePool := new(NodePool)
 	nodePool.Driver = driver
@@ -38,6 +40,7 @@ func newNodePool(serverName string, driver driver.Driver) *NodePool {
 	}
 
 	nodePool.serviceName = serverName
+	nodePool.dcron = dcron
 
 	option := PoolOptions{
 		Replicas: defaultReplicas,
@@ -54,10 +57,7 @@ func newNodePool(serverName string, driver driver.Driver) *NodePool {
 func (np *NodePool) initPool() {
 	np.Driver.SetTimeout(defaultDuration * time.Second)
 	np.NodeID = np.Driver.RegisterServiceNode(np.serviceName)
-
 	np.Driver.SetHeartBeat(np.NodeID)
-
-	np.updatePool()
 }
 
 func (np *NodePool) updatePool() {
@@ -75,7 +75,9 @@ func (np *NodePool) updatePool() {
 func (np *NodePool) tickerUpdatePool() {
 	tickers := time.NewTicker(time.Second * defaultDuration)
 	for range tickers.C {
-		np.updatePool()
+		if np.dcron.isRun {
+			np.updatePool()
+		}
 	}
 }
 
