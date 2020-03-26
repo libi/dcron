@@ -1,14 +1,18 @@
 dcron
 ==============
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
-[![Build Status](https://travis-ci.org/LibiChai/dcron.svg?branch=master)](https://travis-ci.org/LibiChai/dcron)
-[![Go Report Card](https://goreportcard.com/badge/github.com/LibiChai/dcron)](https://goreportcard.com/report/github.com/LibiChai/dcron)
+ [![Build Status](https://travis-ci.org/dlvkin/dcron.svg?branch=master)](https://travis-ci.org/dlvkin/dcron)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dlvkin/dcron)](https://goreportcard.com/report/github.com/dlvkin/dcron)
 
 分布式定时任务库
 
 ### 原理
 
 基于redis同步节点数据，模拟服务注册。然后将任务名 根据一致性hash 选举出执行该任务的节点。
+
+### 申明
+本代码参考 LibiChai/dcron,但是在使用过程中，原代码封装行不是很良好，健壮很差，不能用于生产环境，对代码结构进行部分重构，但是改变太大，
+暂时放弃pr到原库
 
 ### 流程图
 

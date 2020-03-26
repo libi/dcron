@@ -2,8 +2,7 @@ package dcron
 
 import (
 	"fmt"
-	"github.com/LibiChai/dcron/driver/redis"
-	"github.com/robfig/cron/v3"
+	"github.com/dlvkin/dcron/driver/redis"
 	"testing"
 	"time"
 )
@@ -19,7 +18,7 @@ func (t TestJob1) Run() {
 func Test(t *testing.T) {
 
 	drv, _ := redis.NewDriver(&redis.Conf{
-		Host: "127.0.0.1",
+		Host: "10.0.8.51",
 		Port: 6379,
 	})
 	dcron := NewDcron("server1", drv)
@@ -43,7 +42,7 @@ func Test(t *testing.T) {
 	dcron.Remove("s1 test3")
 
 	//add recover
-	dcron2 := NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
+	/*dcron2 := NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
 
 	//panic recover test
 	dcron2.AddFunc("s2 test1", "* * * * *", func() {
@@ -56,7 +55,7 @@ func Test(t *testing.T) {
 	dcron2.AddFunc("s2 test3", "* * * * *", func() {
 		fmt.Println("执行 service2 test3 任务", time.Now().Format("15:04:05"))
 	})
-	dcron2.Start()
+	dcron2.Start()*/
 	//运行多个go test 观察任务分配情况
 
 	//测试120秒后退出

@@ -2,7 +2,7 @@ package dcron
 
 import (
 	"errors"
-	. "github.com/LibiChai/dcron/driver"
+	. "github.com/dlvkin/dcron/driver"
 	"github.com/robfig/cron/v3"
 	"sync"
 )
@@ -12,7 +12,6 @@ type Dcron struct {
 	jobs       map[string]*JobWarpper
 	mu         sync.RWMutex
 	cr         *cron.Cron
-	ServerName string
 	nodePool   *NodePool
 	isRun      bool
 }
@@ -21,7 +20,6 @@ type Dcron struct {
 func NewDcron(serverName string, driver Driver, opts ...cron.Option) *Dcron {
 
 	dcron := new(Dcron)
-	dcron.ServerName = serverName
 	dcron.cr = cron.New(opts...)
 	dcron.jobs = make(map[string]*JobWarpper)
 	dcron.nodePool = newNodePool(serverName, driver, dcron)
@@ -73,8 +71,16 @@ func (d *Dcron) allowThisNodeRun(jobName string) bool {
 
 //Start start job
 func (d *Dcron) Start() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if 	d.nodePool.NodeID == "" {
+		d.nodePool.InitPoolGrabService()
+	}
+	if !d.isRun{
+		go d.nodePool.tickerUpdatePool()
+		d.cr.Start()
+	}
 	d.isRun = true
-	d.cr.Start()
 }
 
 // Run Job

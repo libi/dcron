@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
+	"log"
 	"time"
 )
 
@@ -22,8 +23,8 @@ type Conf struct {
 type RedisDriver struct {
 	conf        *Conf
 	redisClient *redis.Pool
-	timeout     time.Duration
 	Key         string
+	alive    bool
 }
 
 // NewDriver return a redis driver
@@ -36,7 +37,7 @@ func NewDriver(conf *Conf) (*RedisDriver, error) {
 			c, err := redis.Dial("tcp", fmt.Sprintf("%s:%d", conf.Host, conf.Port),
 				redis.DialConnectTimeout(time.Second*5), redis.DialPassword(conf.Password))
 			if err != nil {
-				panic(err)
+				log.Printf("fail redis connect  %s",err)
 			}
 			return c, nil
 		},
@@ -49,6 +50,11 @@ func NewDriver(conf *Conf) (*RedisDriver, error) {
 
 // Ping is check redis valid
 func (rd *RedisDriver) Ping() error {
+	defer func(){
+		if err := recover(); err != nil {
+			log.Printf("fail redis pool ping %v", err)
+		}
+	}()
 	conn := rd.redisClient.Get()
 	defer conn.Close()
 	if _, err := conn.Do("SET", "ping", "pong"); err != nil {
@@ -60,27 +66,30 @@ func (rd *RedisDriver) getKeyPre(serviceName string) string {
 	return GlobalKeyPrefix + serviceName + ":"
 }
 
-//SetTimeout set redis timeout
-func (rd *RedisDriver) SetTimeout(timeout time.Duration) {
-	rd.timeout = timeout
-}
-
-//SetHeartBeat set herbear
-func (rd *RedisDriver) SetHeartBeat(nodeID string) {
-
-	go rd.heartBear(nodeID)
-}
-func (rd *RedisDriver) heartBear(nodeID string) {
-
+//DoHeartBeat set heart beat
+func (rd *RedisDriver) DoHeartBeat(nodeID string,timeout time.Duration) {
 	//每间隔timeout/2设置一次key的超时时间为timeout
+	if rd.alive {
+		return
+	}
+	tickers := time.NewTicker(timeout/2)
+	rd.alive = true
 	key := nodeID
-	tickers := time.NewTicker(rd.timeout / 2)
+	close := func (){
+		rd.alive = false
+		tickers.Stop()
+	}
+	defer close()
 	for range tickers.C {
-		_, err := rd.do("EXPIRE", key, int(rd.timeout/time.Second))
+		_, err := rd.do("EXPIRE",key, int(timeout/time.Second))
 		if err != nil {
-			panic(err)
+			return
 		}
 	}
+}
+
+func (rd *RedisDriver) IsCheckAlive() bool {
+	return rd.alive
 }
 
 //GetServiceNodeList get a serveice node  list
@@ -90,12 +99,10 @@ func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) 
 }
 
 //RegisterServiceNode  register a service node
-func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string) {
-
+func (rd *RedisDriver) RegisterServiceNode(serviceName string,lifeTime time.Duration) (nodeID string) {
 	nodeID = uuid.New().String()
-
 	key := rd.getKeyPre(serviceName) + nodeID
-	_, err := rd.do("SETEX", key, int(rd.timeout/time.Second), nodeID)
+	_, err := rd.do("SETEX", key, int(lifeTime/time.Second), nodeID)
 	if err != nil {
 		return ""
 	}
@@ -104,6 +111,11 @@ func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string) {
 
 func (rd *RedisDriver) do(command string, params ...interface{}) (interface{}, error) {
 	conn := rd.redisClient.Get()
+	defer func(){
+		if err := recover(); err != nil {
+			log.Printf(" redis do command fail: %v", err)
+		}
+	}()
 	defer conn.Close()
 	return conn.Do(command, params...)
 }
