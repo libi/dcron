@@ -82,7 +82,7 @@ func (rd *RedisDriver) DoHeartBeat(nodeID string,timeout time.Duration) {
 	defer close()
 	for range tickers.C {
 		_, err := rd.do("EXPIRE",key, int(timeout/time.Second))
-		if err != nil {
+		if err != nil || !rd.alive  {
 			return
 		}
 	}
@@ -106,6 +106,7 @@ func (rd *RedisDriver) RegisterServiceNode(serviceName string,lifeTime time.Dura
 	if err != nil {
 		return ""
 	}
+	rd.alive = false
 	return key
 }
 
