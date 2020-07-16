@@ -2,7 +2,8 @@ package dcron
 
 import (
 	"fmt"
-	"github.com/LibiChai/dcron/driver/redis"
+	dredis "github.com/LibiChai/dcron/driver/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron/v3"
 	"testing"
 	"time"
@@ -18,10 +19,10 @@ func (t TestJob1) Run() {
 
 func Test(t *testing.T) {
 
-	drv, _ := redis.NewDriver(&redis.Conf{
+	drv, _ := dredis.NewDriver(&dredis.Conf{
 		Host: "127.0.0.1",
 		Port: 6379,
-	})
+	}, redis.DialConnectTimeout(time.Second*10))
 	dcron := NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
@@ -48,7 +49,7 @@ func Test(t *testing.T) {
 	//panic recover test
 	dcron2.AddFunc("s2 test1", "* * * * *", func() {
 		panic("panic test")
-		fmt.Println("执行 service2 test1 任务", time.Now().Format("15:04:05"))
+		fmt.Println("执行 service2 test1 任务,模拟 panic", time.Now().Format("15:04:05"))
 	})
 	dcron2.AddFunc("s2 test2", "* * * * *", func() {
 		fmt.Println("执行 service2 test2 任务", time.Now().Format("15:04:05"))
