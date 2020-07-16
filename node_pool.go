@@ -48,6 +48,7 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron) *NodePoo
 	nodePool.opts = option
 
 	nodePool.initPool()
+	nodePool.updatePool()
 
 	go nodePool.tickerUpdatePool()
 
