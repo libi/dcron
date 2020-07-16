@@ -13,10 +13,14 @@ const GlobalKeyPrefix = "distributed-cron:"
 
 // RedisConf is redis config
 type Conf struct {
-	Proto    string
-	Host     string
-	Port     int
+	Proto string
+
+	// first use addr
+	Addr     string
 	Password string
+
+	Host string
+	Port int
 
 	MaxActive   int
 	MaxIdle     int
@@ -51,6 +55,9 @@ func NewDriver(conf *Conf, options ...redis.DialOption) (*RedisDriver, error) {
 	if conf.IdleTimeout == 0 {
 		conf.IdleTimeout = time.Second * 5
 	}
+	if conf.Addr == "" {
+		conf.Addr = fmt.Sprintf("%s:%d", conf.Host, conf.Port)
+	}
 
 	rd := &redis.Pool{
 		MaxIdle:     conf.MaxIdle,
@@ -58,7 +65,7 @@ func NewDriver(conf *Conf, options ...redis.DialOption) (*RedisDriver, error) {
 		IdleTimeout: conf.IdleTimeout,
 		Wait:        conf.Wait,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial(conf.Proto, fmt.Sprintf("%s:%d", conf.Host, conf.Port), ops...)
+			c, err := redis.Dial(conf.Proto, conf.Addr, ops...)
 			if err != nil {
 				panic(err)
 			}
