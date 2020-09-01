@@ -19,7 +19,6 @@ type Conf struct {
 
 	// first use addr
 	Addrs    []string
-	Username string
 	Password string
 
 	MaxRedirects int
@@ -41,7 +40,6 @@ type RedisClusterDriver struct {
 func NewDriver(conf *Conf) (*RedisClusterDriver, error) {
 	opts := &redis.ClusterOptions{
 		Addrs:    conf.Addrs,
-		Username: conf.Username,
 		Password: conf.Password,
 		ReadOnly: conf.ReadOnly,
 	}
