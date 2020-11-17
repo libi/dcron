@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-const defaultReplicas = 50
-const defaultDuration = 1
-
 //NodePool is a node pool
 type NodePool struct {
 	serviceName string
@@ -18,41 +15,34 @@ type NodePool struct {
 	mu    sync.Mutex
 	nodes *consistenthash.Map
 
-	Driver driver.Driver
-	opts   PoolOptions
+	Driver         driver.Driver
+	hashReplicas   int
+	hashFn         consistenthash.Hash
+	updateDuration time.Duration
 
 	dcron *Dcron
 }
 
-//PoolOptions is a pool options
-type PoolOptions struct {
-	Replicas int
-	HashFn   consistenthash.Hash
-}
+func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) *NodePool {
 
-func newNodePool(serverName string, driver driver.Driver, dcron *Dcron) *NodePool {
-
-	nodePool := new(NodePool)
-	nodePool.Driver = driver
-	err := nodePool.Driver.Ping()
+	err := driver.Ping()
 	if err != nil {
 		panic(err)
 	}
 
-	nodePool.serviceName = serverName
-	nodePool.dcron = dcron
-
-	option := PoolOptions{
-		Replicas: defaultReplicas,
+	nodePool := &NodePool{
+		Driver:         driver,
+		serviceName:    serverName,
+		dcron:          dcron,
+		hashReplicas:   hashReplicas,
+		updateDuration: updateDuration,
 	}
-	nodePool.opts = option
-
 	return nodePool
 }
 
 func (np *NodePool) StartPool() error {
 	var err error
-	np.Driver.SetTimeout(defaultDuration * time.Second)
+	np.Driver.SetTimeout(np.updateDuration)
 	np.NodeID, err = np.Driver.RegisterServiceNode(np.serviceName)
 	if err != nil {
 		return err
@@ -75,7 +65,7 @@ func (np *NodePool) updatePool() error {
 	if err != nil {
 		return err
 	}
-	np.nodes = consistenthash.New(np.opts.Replicas, np.opts.HashFn)
+	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
 	for _, node := range nodes {
 		np.nodes.Add(node)
 	}
