@@ -7,28 +7,59 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
+
+const defaultReplicas = 50
+const defaultDuration = time.Second
 
 //Dcron is main struct
 type Dcron struct {
 	jobs       map[string]*JobWarpper
 	mu         sync.RWMutex
-	cr         *cron.Cron
 	ServerName string
 	nodePool   *NodePool
 	isRun      bool
-	logger     *log.Logger
+
+	logger *log.Logger
+
+	nodeUpdateDuration time.Duration
+	hashReplicas       int
+
+	cr        *cron.Cron
+	crOptions []cron.Option
 }
 
 //NewDcron create a Dcron
-func NewDcron(serverName string, driver Driver, opts ...cron.Option) *Dcron {
-	dcron := new(Dcron)
-	dcron.ServerName = serverName
-	dcron.logger = log.New(os.Stdout, "[dcron] ", log.LstdFlags)
-	dcron.cr = cron.New(opts...)
-	dcron.jobs = make(map[string]*JobWarpper)
-	dcron.nodePool = newNodePool(serverName, driver, dcron)
+func NewDcron(serverName string, driver Driver, cronOpts ...cron.Option) *Dcron {
+	dcron := newDcron(serverName)
+	dcron.crOptions = cronOpts
+	dcron.cr = cron.New(dcron.crOptions...)
+	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	return dcron
+}
+
+//NewDcronWithOption create a Dcron with Dcron Option
+func NewDcronWithOption(serverName string, driver Driver, dcronOpts ...Option) *Dcron {
+	dcron := newDcron(serverName)
+	for _, opt := range dcronOpts {
+		opt(dcron)
+	}
+
+	dcron.cr = cron.New(dcron.crOptions...)
+	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
+	return dcron
+}
+
+func newDcron(serverName string) *Dcron {
+	return &Dcron{
+		ServerName:         serverName,
+		logger:             log.New(os.Stdout, "[dcron] ", log.LstdFlags),
+		jobs:               make(map[string]*JobWarpper),
+		crOptions:          make([]cron.Option, 0),
+		nodeUpdateDuration: defaultDuration,
+		hashReplicas:       defaultReplicas,
+	}
 }
 
 //SetLogger set dcron logger

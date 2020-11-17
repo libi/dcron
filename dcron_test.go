@@ -5,6 +5,8 @@ import (
 	dredis "github.com/LibiChai/dcron/driver/redis"
 	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron/v3"
+	"log"
+	"os"
 	"testing"
 	"time"
 )
@@ -54,7 +56,36 @@ func Test(t *testing.T) {
 		t.Fatal("add func error")
 	}
 	dcron2.Start()
-	//运行多个go test 观察任务分配情况
+
+	// set logger
+	logger := log.New(os.Stdout, "[test]", log.LstdFlags)
+	// wrap cron recover
+	rec := CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
+
+	// option test
+	dcron3 := NewDcronWithOption("server3", drv, rec, WithLogger(logger), WithHashReplicas(10), WithNodeUpdateDuration(time.Second*10))
+
+	//panic recover test
+	err = dcron3.AddFunc("s3 test1", "* * * * *", func() {
+		t.Log("执行 server3 test1 任务,模拟 panic", time.Now().Format("15:04:05"))
+		panic("panic test")
+	})
+	if err != nil {
+		t.Fatal("add func error")
+	}
+	err = dcron3.AddFunc("s3 test2", "* * * * *", func() {
+		t.Log("执行 server3 test2 任务", time.Now().Format("15:04:05"))
+	})
+	if err != nil {
+		t.Fatal("add func error")
+	}
+	err = dcron3.AddFunc("s3 test3", "* * * * *", func() {
+		t.Log("执行 server3 test3 任务", time.Now().Format("15:04:05"))
+	})
+	if err != nil {
+		t.Fatal("add func error")
+	}
+	dcron3.Start()
 
 	//测试30秒后退出
 	time.Sleep(30 * time.Second)
