@@ -47,37 +47,47 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron) *NodePoo
 	}
 	nodePool.opts = option
 
-	nodePool.initPool()
-	nodePool.updatePool()
-
-	go nodePool.tickerUpdatePool()
-
 	return nodePool
 }
 
-func (np *NodePool) initPool() {
+func (np *NodePool) StartPool() error {
 	np.Driver.SetTimeout(defaultDuration * time.Second)
 	np.NodeID = np.Driver.RegisterServiceNode(np.serviceName)
 	np.Driver.SetHeartBeat(np.NodeID)
+
+	err := np.updatePool()
+	if err != nil {
+		return err
+	}
+
+	go np.tickerUpdatePool()
+	return nil
 }
 
-func (np *NodePool) updatePool() {
+func (np *NodePool) updatePool() error {
 	np.mu.Lock()
 	defer np.mu.Unlock()
 	nodes, err := np.Driver.GetServiceNodeList(np.serviceName)
-	if nodes == nil {
-		panic(err)
+	if err != nil {
+		return err
 	}
 	np.nodes = consistenthash.New(np.opts.Replicas, np.opts.HashFn)
 	for _, node := range nodes {
 		np.nodes.Add(node)
 	}
+	return nil
 }
 func (np *NodePool) tickerUpdatePool() {
 	tickers := time.NewTicker(time.Second * defaultDuration)
 	for range tickers.C {
 		if np.dcron.isRun {
-			np.updatePool()
+			err := np.updatePool()
+			if err != nil {
+				np.dcron.err("update node pool error %+v", err)
+			}
+		} else {
+			tickers.Stop()
+			return
 		}
 	}
 }

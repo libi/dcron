@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
+	"log"
 	"time"
 )
 
@@ -88,7 +89,7 @@ func (rd *RedisDriver) Ping() error {
 	return nil
 }
 func (rd *RedisDriver) getKeyPre(serviceName string) string {
-	return GlobalKeyPrefix + serviceName + ":"
+	return fmt.Sprintf("%s%s:", GlobalKeyPrefix, serviceName)
 }
 
 //SetTimeout set redis timeout
@@ -98,7 +99,6 @@ func (rd *RedisDriver) SetTimeout(timeout time.Duration) {
 
 //SetHeartBeat set herbear
 func (rd *RedisDriver) SetHeartBeat(nodeID string) {
-
 	go rd.heartBear(nodeID)
 }
 func (rd *RedisDriver) heartBear(nodeID string) {
@@ -109,7 +109,7 @@ func (rd *RedisDriver) heartBear(nodeID string) {
 	for range tickers.C {
 		_, err := rd.do("EXPIRE", key, int(rd.timeout/time.Second))
 		if err != nil {
-			panic(err)
+			log.Printf("redis expire error %+v", err)
 		}
 	}
 }
