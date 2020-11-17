@@ -83,7 +83,6 @@ func (rd *RedisClusterDriver) heartBear(nodeID string) {
 	key := nodeID
 	tickers := time.NewTicker(rd.timeout / 2)
 	for range tickers.C {
-
 		if err := rd.redisClient.Expire(rd.ctx, key, rd.timeout).Err(); err != nil {
 			panic(err)
 		}
@@ -97,16 +96,16 @@ func (rd *RedisClusterDriver) GetServiceNodeList(serviceName string) ([]string, 
 }
 
 //RegisterServiceNode  register a service node
-func (rd *RedisClusterDriver) RegisterServiceNode(serviceName string) (nodeID string) {
+func (rd *RedisClusterDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
 
 	nodeID = uuid.New().String()
 
 	key := rd.getKeyPre(serviceName) + nodeID
 
 	if err := rd.redisClient.Set(rd.ctx, key, nodeID, rd.timeout).Err(); err != nil {
-		return ""
+		return "", err
 	}
-	return key
+	return key, nil
 }
 
 /**

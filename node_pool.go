@@ -51,11 +51,15 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron) *NodePoo
 }
 
 func (np *NodePool) StartPool() error {
+	var err error
 	np.Driver.SetTimeout(defaultDuration * time.Second)
-	np.NodeID = np.Driver.RegisterServiceNode(np.serviceName)
+	np.NodeID, err = np.Driver.RegisterServiceNode(np.serviceName)
+	if err != nil {
+		return err
+	}
 	np.Driver.SetHeartBeat(np.NodeID)
 
-	err := np.updatePool()
+	err = np.updatePool()
 	if err != nil {
 		return err
 	}

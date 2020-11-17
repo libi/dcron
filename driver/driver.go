@@ -9,5 +9,5 @@ type Driver interface {
 	SetHeartBeat(nodeID string)
 	SetTimeout(timeout time.Duration)
 	GetServiceNodeList(ServiceName string) ([]string, error)
-	RegisterServiceNode(ServiceName string) string
+	RegisterServiceNode(ServiceName string) (string, error)
 }
