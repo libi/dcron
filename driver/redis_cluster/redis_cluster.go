@@ -92,7 +92,7 @@ func (rd *RedisClusterDriver) heartBear(nodeID string) {
 //GetServiceNodeList get a service node  list on redis cluster
 func (rd *RedisClusterDriver) GetServiceNodeList(serviceName string) ([]string, error) {
 	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
-	return rd.scan(mathStr)
+	return rd.scan(mathStr),nil
 }
 
 //RegisterServiceNode  register a service node
