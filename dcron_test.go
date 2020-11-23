@@ -2,7 +2,7 @@ package dcron
 
 import (
 	"fmt"
-	dredis "github.com/LibiChai/dcron/driver/redis"
+	dredis "github.com/libi/dcron/driver/redis"
 	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron/v3"
 	"log"

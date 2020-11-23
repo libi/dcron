@@ -2,7 +2,7 @@ package dcron
 
 import (
 	"errors"
-	. "github.com/LibiChai/dcron/driver"
+	. "github.com/libi/dcron/driver"
 	"github.com/robfig/cron/v3"
 	"log"
 	"os"
