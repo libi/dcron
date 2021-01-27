@@ -72,7 +72,7 @@ func (np *NodePool) updatePool() error {
 	return nil
 }
 func (np *NodePool) tickerUpdatePool() {
-	tickers := time.NewTicker(time.Second * defaultDuration)
+	tickers := time.NewTicker(np.updateDuration)
 	for range tickers.C {
 		if np.dcron.isRun {
 			err := np.updatePool()

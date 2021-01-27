@@ -2,8 +2,8 @@ package dcron
 
 import (
 	"fmt"
-	dredis "github.com/libi/dcron/driver/redis"
 	"github.com/gomodule/redigo/redis"
+	dredis "github.com/libi/dcron/driver/redis"
 	"github.com/robfig/cron/v3"
 	"log"
 	"os"
@@ -29,7 +29,10 @@ func Test(t *testing.T) {
 	}, redis.DialConnectTimeout(time.Second*10))
 
 	go runNode(t, drv)
+	// 间隔1秒启动测试节点刷新逻辑
+	time.Sleep(time.Second)
 	go runNode(t, drv)
+	time.Sleep(time.Second * 2)
 	go runNode(t, drv)
 
 	//add recover
@@ -58,7 +61,7 @@ func Test(t *testing.T) {
 	dcron2.Start()
 
 	// set logger
-	logger := log.New(os.Stdout, "[test]", log.LstdFlags)
+	logger := log.New(os.Stdout, "[test_s3]", log.LstdFlags)
 	// wrap cron recover
 	rec := CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
 
@@ -87,8 +90,8 @@ func Test(t *testing.T) {
 	}
 	dcron3.Start()
 
-	//测试30秒后退出
-	time.Sleep(30 * time.Second)
+	//测试120秒后退出
+	time.Sleep(120 * time.Second)
 	t.Log("testData", testData)
 }
 
