@@ -34,7 +34,7 @@ type Dcron struct {
 func NewDcron(serverName string, driver Driver, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
-	dcron.cr = cron.New(dcron.crOptions...)
+	dcron.cr = cron.New(cronOpts...)
 	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	return dcron
 }
