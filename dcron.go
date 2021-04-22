@@ -21,7 +21,7 @@ type Dcron struct {
 	nodePool   *NodePool
 	isRun      bool
 
-	logger *log.Logger
+	logger interface{ Printf(string, ...interface{}) }
 
 	nodeUpdateDuration time.Duration
 	hashReplicas       int
@@ -68,7 +68,7 @@ func (d *Dcron) SetLogger(logger *log.Logger) {
 }
 
 //GetLogger get dcron logger
-func (d *Dcron) GetLogger() *log.Logger {
+func (d *Dcron) GetLogger() interface{ Printf(string, ...interface{}) } {
 	return d.logger
 }
 
