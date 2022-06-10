@@ -22,7 +22,7 @@ dcron
 - 任务唯一：同一个服务内同一个任务只会启动单个运行实例，不会重复执行。
 - 自定义存储：通过实现driver接口来增加节点数据存储方式。
 
-### 使用说明
+### 快速开始
 
 1.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
 ```golang
@@ -43,7 +43,20 @@ dcron
 dcron.Start()
 ```
 
-### 关于服务名的说明
+### 更多配置
+
+Dcron 项目基于 https://github.com/robfig/cron , 在初始化 Dcron 时的第三个参数之后都会原样配置到 cron 。
+
+例如需要配置秒级的 cron 表达式，可以使用
+
+```golang
+dcron := NewDcron("server1", drv,cron.WithSeconds())
+```
+
+更多的配置项可以阅读 https://github.com/robfig/cron/blob/master/option.go
+
+
+### 关于服务名
 
 服务名只是为了定义相同一组任务，节点在启动时会产生一个uuid，然后绑定到这个服务内，不会存在多个节点使用同一个服务明出现冲突的问题。
 
