@@ -2,11 +2,11 @@ package etcd
 
 import (
 	"context"
-	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/libi/dcron/driver"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
+	"log"
 	"sync"
 	"time"
 )
@@ -35,7 +35,8 @@ func NewEtcdDriver(endpoints []string) (*EtcdDriver, error) {
 		DialTimeout: dialTimeout,
 	})
 	if err != nil {
-		glog.Fatal(err)
+		log.Printf("NewEtcdDriver error: %v", err)
+		return nil, err
 	}
 
 	ser := &EtcdDriver{
@@ -58,34 +59,34 @@ func (s *EtcdDriver) putKeyWithLease(key, val string) error {
 
 	resp, err := s.cli.Grant(ctx, s.lease)
 	if err != nil {
-		glog.Errorf("grant error:%v", err)
+		log.Printf("grant error:%v", err)
 		return err
 	}
 	//注册服务并绑定租约
 	_, err = s.cli.Put(ctx, key, val, clientv3.WithLease(resp.ID))
 	if err != nil {
-		glog.Errorf("put error:%v", err)
+		log.Printf("put error:%v", err)
 		return err
 	}
 	//设置续租 定期发送需求请求 此处ctx不能设置超时
 	leaseRespChan, err := s.cli.KeepAlive(context.Background(), resp.ID)
 
 	if err != nil {
-		glog.Errorf("keepalive error:%v", err)
+		log.Printf("keepalive error:%v", err)
 		return err
 	}
 	s.leaseID = resp.ID
 	s.keepAliveChan = leaseRespChan
-	glog.V(8).Infof("putKeyWithLease key:%v  val:%v  success!", key, val)
+	log.Printf("putKeyWithLease key:%v  val:%v  success!", key, val)
 	return nil
 }
 
 //listenLeaseRespChan 监听 续租情况
 func (s *EtcdDriver) listenLeaseRespChan() {
 	for leaseKeepResp := range s.keepAliveChan {
-		glog.V(10).Infof("续约成功  %v", leaseKeepResp)
+		log.Printf("续约成功  %v", leaseKeepResp)
 	}
-	glog.V(10).Infof("关闭续租")
+	log.Printf("关闭续租")
 }
 
 // Close 注销服务
@@ -94,7 +95,7 @@ func (s *EtcdDriver) Close() error {
 	if _, err := s.cli.Revoke(context.Background(), s.leaseID); err != nil {
 		return err
 	}
-	glog.V(8).Infof("撤销租约")
+	log.Printf("撤销租约")
 	return s.cli.Close()
 }
 
@@ -130,7 +131,7 @@ func getPrefix(serviceName string) string {
 func (s *EtcdDriver) watcher(serviceName string) {
 	prefix := getPrefix(serviceName)
 	rch := s.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
-	glog.V(8).Infof("watching prefix:%s now...", prefix)
+	log.Printf("watching prefix:%s now...", prefix)
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch ev.Type {
@@ -147,7 +148,7 @@ func (s *EtcdDriver) watcher(serviceName string) {
 func (s *EtcdDriver) setServiceList(serviceName, key, val string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	glog.V(10).Infof("put key :%v val:%v", key, val)
+	log.Printf("put key :%v val:%v", key, val)
 	var nodeMap map[string]string
 	var ok bool
 	if nodeMap, ok = s.serverList[serviceName]; !ok {
@@ -161,7 +162,7 @@ func (s *EtcdDriver) setServiceList(serviceName, key, val string) {
 func (s *EtcdDriver) delServiceList(serviceName, key string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	glog.V(10).Infof("del serviceName:%v, key:%v", serviceName, key)
+	log.Printf("del serviceName:%v, key:%v", serviceName, key)
 	if nodeMap, ok := s.serverList[serviceName]; ok {
 		delete(nodeMap, key)
 	}
