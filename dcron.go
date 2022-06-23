@@ -150,7 +150,7 @@ func (d *Dcron) Run() {
 	}
 	d.info("dcron running nodeID is %s", d.nodePool.NodeID)
 	d.cr.Run()
-	
+
 }
 
 //Stop stop job
