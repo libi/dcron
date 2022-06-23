@@ -2,11 +2,10 @@ package dcron
 
 import (
 	"errors"
-	. "github.com/libi/dcron/driver"
+	"github.com/libi/dcron/driver"
 	"github.com/robfig/cron/v3"
 	"log"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -16,7 +15,6 @@ const defaultDuration = time.Second
 //Dcron is main struct
 type Dcron struct {
 	jobs       map[string]*JobWarpper
-	mu         sync.RWMutex
 	ServerName string
 	nodePool   *NodePool
 	isRun      bool
@@ -31,7 +29,7 @@ type Dcron struct {
 }
 
 //NewDcron create a Dcron
-func NewDcron(serverName string, driver Driver, cronOpts ...cron.Option) *Dcron {
+func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
@@ -40,7 +38,7 @@ func NewDcron(serverName string, driver Driver, cronOpts ...cron.Option) *Dcron 
 }
 
 //NewDcronWithOption create a Dcron with Dcron Option
-func NewDcronWithOption(serverName string, driver Driver, dcronOpts ...Option) *Dcron {
+func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Option) *Dcron {
 	dcron := newDcron(serverName)
 	for _, opt := range dcronOpts {
 		opt(dcron)

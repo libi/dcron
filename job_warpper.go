@@ -2,6 +2,7 @@ package dcron
 
 import "github.com/robfig/cron/v3"
 
+// Job Interface
 type Job interface {
 	Run()
 }
