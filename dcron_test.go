@@ -41,7 +41,6 @@ func Test(t *testing.T) {
 	//panic recover test
 	err := dcron2.AddFunc("s2 test1", "* * * * *", func() {
 		panic("panic test")
-		t.Log("执行 service2 test1 任务,模拟 panic", time.Now().Format("15:04:05"))
 	})
 	if err != nil {
 		t.Fatal("add func error")
@@ -103,31 +102,31 @@ func runNode(t *testing.T, drv *dredis.RedisDriver) {
 		// 同时启动3个节点 但是一个 job 同一时间只会执行一次 通过 map 判重
 		key := "s1 test1" + time.Now().Format("15:04:05")
 		if _, ok := testData[key]; ok {
-			t.Fatal("job have running in other node")
+			t.Error("job have running in other node")
 		}
 		testData[key] = struct{}{}
 	})
 	if err != nil {
-		t.Fatal("add func error")
+		t.Error("add func error")
 	}
 	err = dcron.AddFunc("s1 test2", "* * * * *", func() {
 		t.Log("执行 service1 test2 任务", time.Now().Format("15:04:05"))
 	})
 	if err != nil {
-		t.Fatal("add func error")
+		t.Error("add func error")
 	}
 
 	testJob := TestJob1{"addtestjob"}
 	err = dcron.AddJob("addtestjob1", "* * * * *", testJob)
 	if err != nil {
-		t.Fatal("add func error")
+		t.Error("add func error")
 	}
 
 	err = dcron.AddFunc("s1 test3", "* * * * *", func() {
 		t.Log("执行 service1 test3 任务", time.Now().Format("15:04:05"))
 	})
 	if err != nil {
-		t.Fatal("add func error")
+		t.Error("add func error")
 	}
 	dcron.Start()
 

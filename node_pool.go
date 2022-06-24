@@ -40,6 +40,7 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDu
 	return nodePool
 }
 
+// StartPool Start Service Watch Pool
 func (np *NodePool) StartPool() error {
 	var err error
 	np.Driver.SetTimeout(np.updateDuration)
