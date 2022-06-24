@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Option is Dcron Option
 type Option func(*Dcron)
 
 // WithLogger both set dcron and cron logger.
