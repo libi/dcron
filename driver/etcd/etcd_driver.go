@@ -23,7 +23,7 @@ type EtcdDriver struct {
 	cli        *clientv3.Client
 	lease      int64
 	serverList map[string]map[string]string
-	lock       sync.Mutex
+	lock       sync.RWMutex
 }
 
 //NewEtcdDriver ...
@@ -55,14 +55,13 @@ func (s *EtcdDriver) putKeyWithLease(key, val string) (clientv3.LeaseID, error) 
 	if err != nil {
 		return 0, err
 	}
-	leaseID := resp.ID
 	//注册服务并绑定租约
-	_, err = s.cli.Put(ctx, key, val, clientv3.WithLease(leaseID))
+	_, err = s.cli.Put(ctx, key, val, clientv3.WithLease(resp.ID))
 	if err != nil {
 		return 0, err
 	}
 
-	return leaseID, nil
+	return resp.ID, nil
 }
 
 func (s *EtcdDriver) randNodeID(serviceName string) (nodeID string) {
@@ -72,7 +71,7 @@ func (s *EtcdDriver) randNodeID(serviceName string) (nodeID string) {
 //WatchService 初始化服务列表和监视
 func (s *EtcdDriver) watchService(serviceName string) error {
 	prefix := getPrefix(serviceName)
-	//根据前缀获取现有的key
+	// 根据前缀获取现有的key
 	resp, err := s.cli.Get(context.Background(), prefix, clientv3.WithPrefix())
 	if err != nil {
 		return err
@@ -82,7 +81,7 @@ func (s *EtcdDriver) watchService(serviceName string) error {
 		s.setServiceList(serviceName, string(ev.Key), string(ev.Value))
 	}
 
-	//监视前缀，修改变更的server
+	// 监视前缀，修改变更的server
 	go s.watcher(serviceName)
 	return nil
 }
@@ -91,7 +90,7 @@ func getPrefix(serviceName string) string {
 	return serviceName + "/"
 }
 
-//watcher 监听前缀
+// watcher 监听前缀
 func (s *EtcdDriver) watcher(serviceName string) {
 	prefix := getPrefix(serviceName)
 	rch := s.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
@@ -107,20 +106,21 @@ func (s *EtcdDriver) watcher(serviceName string) {
 	}
 }
 
-//setServiceList 新增服务地址
+// setServiceList 新增服务地址
 func (s *EtcdDriver) setServiceList(serviceName, key, val string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	var nodeMap map[string]string
-	var ok bool
-	if nodeMap, ok = s.serverList[serviceName]; !ok {
-		nodeMap = make(map[string]string)
+	if nodeMap, ok := s.serverList[serviceName]; !ok {
+		nodeMap = map[string]string{
+			key: val,
+		}
 		s.serverList[serviceName] = nodeMap
+	} else {
+		s.serverList[serviceName][key] = val
 	}
-	nodeMap[key] = val
 }
 
-//DelServiceList 删除服务地址
+// DelServiceList 删除服务地址
 func (s *EtcdDriver) delServiceList(serviceName, key string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -129,10 +129,10 @@ func (s *EtcdDriver) delServiceList(serviceName, key string) {
 	}
 }
 
-//GetServices 获取服务地址
+// GetServices 获取服务地址
 func (s *EtcdDriver) getServices(serviceName string) []string {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	addrs := make([]string, 0)
 	if nodeMap, ok := s.serverList[serviceName]; ok {
 		for _, v := range nodeMap {
@@ -147,40 +147,39 @@ func (e *EtcdDriver) Ping() error {
 }
 
 func (e *EtcdDriver) SetHeartBeat(nodeID string) {
-
 	leaseID, err := e.putKeyWithLease(nodeID, nodeID)
 	if err != nil {
 		log.Printf("putKeyWithLease error: %v", err)
 		return
 	}
 
-	//设置续租  此处ctx不能设置超时
 	leaseRespChan, err := e.cli.KeepAlive(context.Background(), leaseID)
 
 	if err != nil {
 		log.Printf("keepalive error:%v", err)
 		return
 	}
-
-	go func() {
-		for {
-			_ = <-leaseRespChan
-			//log.Printf("续约成功 %v", resp)
+	select {
+	case resp := <-leaseRespChan:
+		if resp == nil {
+			log.Printf("ectd cli keepalive unexpected nil")
 		}
-		//log.Printf("关闭续租")
-	}()
-
+	case <-time.After(businessTimeout):
+		log.Printf("ectd cli keepalive timeout")
+	}
 }
 
+// SetTimeout set etcd lease timeout
 func (e *EtcdDriver) SetTimeout(timeout time.Duration) {
-
 	e.lease = int64(timeout.Seconds())
 }
 
+// GetServiceNodeList get service notes
 func (e *EtcdDriver) GetServiceNodeList(serviceName string) ([]string, error) {
 	return e.getServices(serviceName), nil
 }
 
+// RegisterServiceNode register a node to service
 func (e *EtcdDriver) RegisterServiceNode(serviceName string) (string, error) {
 	nodeId := e.randNodeID(serviceName)
 	_, err := e.putKeyWithLease(nodeId, nodeId)
