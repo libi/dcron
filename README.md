@@ -58,7 +58,7 @@ Dcron 项目基于 https://github.com/robfig/cron , 使用 NewDcron 初始化 Dc
 dcron := NewDcron("server1", drv,cron.WithSeconds())
 ```
 
-另外如果还可以通过 NewDcronWithOption 方法初始化，可以配置日志输出等。
+另外还可以通过 ```NewDcronWithOption``` 方法初始化，可以配置日志输出等。
 可选配置可以参考：https://github.com/libi/dcron/blob/master/option.go
 
 
