@@ -50,7 +50,7 @@ dcron.Run()
 
 ### 更多配置
 
-Dcron 项目基于 https://github.com/robfig/cron , 在初始化 Dcron 时的第三个参数之后都会原样配置到 cron 。
+Dcron 项目基于 https://github.com/robfig/cron , 使用 NewDcron 初始化 Dcron 时的第三个参数之后都会原样配置到 cron 。
 
 例如需要配置秒级的 cron 表达式，可以使用
 
@@ -58,7 +58,8 @@ Dcron 项目基于 https://github.com/robfig/cron , 在初始化 Dcron 时的第
 dcron := NewDcron("server1", drv,cron.WithSeconds())
 ```
 
-更多的配置项可以阅读 https://github.com/robfig/cron/blob/master/option.go
+另外还可以通过 ```NewDcronWithOption``` 方法初始化，可以配置日志输出等。
+可选配置可以参考：https://github.com/libi/dcron/blob/master/option.go
 
 
 ### 关于服务名
