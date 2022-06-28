@@ -3,16 +3,17 @@ package etcd
 import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
 	"testing"
 	"time"
 )
 
 func TestEtcdDriver(t *testing.T) {
-
-	var endpoints = []string{"127.0.0.1:2379"}
+	var lazyCluster = integration.NewLazyCluster()
+	defer lazyCluster.Terminate()
 
 	ed, err := NewEtcdDriver(&clientv3.Config{
-		Endpoints:   endpoints,
+		Endpoints:   lazyCluster.EndpointsV3(),
 		DialTimeout: dialTimeout,
 	})
 
@@ -46,10 +47,11 @@ func TestEtcdDriver(t *testing.T) {
 
 func TestSetHeartBeat(t *testing.T) {
 
-	var endpoints = []string{"127.0.0.1:2379"}
+	var lazyCluster = integration.NewLazyCluster()
+	defer lazyCluster.Terminate()
 
 	ed, err := NewEtcdDriver(&clientv3.Config{
-		Endpoints:   endpoints,
+		Endpoints:   lazyCluster.EndpointsV3(),
 		DialTimeout: dialTimeout,
 	})
 
