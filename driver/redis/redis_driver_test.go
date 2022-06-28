@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -19,8 +18,8 @@ func TestRedisDriver_Scan(t *testing.T) {
 	for _, str := range testStr {
 		ret, err := rd.scan(str)
 		if err != nil {
-			panic(err)
+			t.Error(err)
 		}
-		fmt.Println(ret)
+		t.Log(ret)
 	}
 }
