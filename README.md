@@ -1,23 +1,21 @@
-dcron
+Dcron
 ==============
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
 [![Tests](https://github.com/libi/dcron/actions/workflows/test.yml/badge.svg)](https://github.com/libi/dcron/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/libi/dcron#1)](https://goreportcard.com/report/github.com/libi/dcron)
 
-分布式定时任务库
+a lightweight distributed job scheduler  library based on redis or etcd
+
+轻量分布式定时任务库
 
 ### 原理
 
-基于redis同步节点数据，模拟服务注册。然后将任务名 根据一致性hash 选举出执行该任务的节点。
+使用 redis/etcd 同步服务节点列表及存活状态，在节点列表内使用一致性hash，选举可执行任务的节点。
 
 ### 为什么不直接用分布式锁实现？
 通过各个节点在定时任务内抢锁方式实现，需要依赖各个节点系统时间完全一致，当系统时间有误差时可能会导致以下问题：
 1. 如果任务的执行时间小于系统时间差，任务仍然会被重复执行（某个节点定时执行完毕释放锁，又被另一个因为系统时间之后到达定时时间的节点取得锁）。
 2. 即使有极小的误差，因为某个节点的时间会比其他节点靠前，在抢锁时能第一时间取得锁，所以导致的结果是所有任务都只会被该节点执行，无法均匀分布到多节点。 
-
-### 流程图
-
-![dcron流程图](dcron.png)
 
 ### 特性
 - 鲁棒性： 任务的节点分配不依赖系统时间，所以各个节点间系统时间有误差也可以确保均匀分布及单节点执行。
@@ -67,9 +65,8 @@ dcron := NewDcron("server1", drv,cron.WithSeconds())
 可选配置可以参考：https://github.com/libi/dcron/blob/master/option.go
 
 
-### 关于服务名
+### 服务名/serviceName
 
-服务名只是为了定义相同一组任务，节点在启动时会产生一个uuid，然后绑定到这个服务内，不会存在多个节点使用同一个服务明出现冲突的问题。
+服务名是为了定义相同一组任务，可以理解为任务分配和调度的边界。
 
-比如有个服务叫【课堂服务】里面包含了 【上课】【下课】 等各类定时任务，那么就可以有n个不同的服务节点（可以在同一台或者不同机器上），服务都叫课堂服务。
-
+多个节点使用同一个服务名会被视为同一任务组，在同一个任务组内的任务会均匀分配至组内各个节点并确保不会重复执行
