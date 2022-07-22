@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"log"
 	"sync"
 	"time"
 )
@@ -84,7 +84,8 @@ func (rd *RedisClusterDriver) heartBear(nodeID string) {
 	tickers := time.NewTicker(rd.timeout / 2)
 	for range tickers.C {
 		if err := rd.redisClient.Expire(rd.ctx, key, rd.timeout).Err(); err != nil {
-			panic(err)
+			log.Printf("redis expire error %+v", err)
+			continue
 		}
 	}
 }
