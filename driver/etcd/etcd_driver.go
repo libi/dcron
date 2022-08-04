@@ -2,13 +2,14 @@ package etcd
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/libi/dcron/driver"
-	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/client/v3"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/libi/dcron/driver"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 var _ driver.Driver = &EtcdDriver{}
@@ -24,6 +25,7 @@ type EtcdDriver struct {
 	lease      int64
 	serverList map[string]map[string]string
 	lock       sync.RWMutex
+	leaseID    clientv3.LeaseID
 }
 
 //NewEtcdDriver ...
@@ -146,27 +148,52 @@ func (e *EtcdDriver) Ping() error {
 	return nil
 }
 
-func (e *EtcdDriver) SetHeartBeat(nodeID string) {
-	leaseID, err := e.putKeyWithLease(nodeID, nodeID)
+func (e *EtcdDriver) keepAlive(ctx context.Context, nodeID string) (<-chan *clientv3.LeaseKeepAliveResponse, error) {
+	var err error
+	e.leaseID, err = e.putKeyWithLease(nodeID, nodeID)
 	if err != nil {
 		log.Printf("putKeyWithLease error: %v", err)
-		return
+		return nil, err
 	}
 
-	leaseRespChan, err := e.cli.KeepAlive(context.Background(), leaseID)
+	return e.cli.KeepAlive(ctx, e.leaseID)
+}
 
+func (e *EtcdDriver) revoke() {
+	_, err := e.cli.Lease.Revoke(context.Background(), e.leaseID)
 	if err != nil {
-		log.Printf("keepalive error:%v", err)
+		log.Printf("lease revoke error: %v", err)
+	}
+}
+
+func (e *EtcdDriver) SetHeartBeat(nodeID string) {
+	leaseCh, err := e.keepAlive(context.Background(), nodeID)
+	if err != nil {
+		log.Printf("setHeartBeat error: %v", err)
 		return
 	}
-	select {
-	case resp := <-leaseRespChan:
-		if resp == nil {
-			log.Printf("ectd cli keepalive unexpected nil")
+	go func() {
+		defer func() {
+			err := recover()
+			if err != nil {
+				log.Printf("keepAlive panic: %v", err)
+				return
+			}
+		}()
+		for {
+			select {
+			case _, ok := <-leaseCh:
+				if !ok {
+					e.revoke()
+					e.SetHeartBeat(nodeID)
+					return
+				}
+			case <-time.After(businessTimeout):
+				log.Printf("ectd cli keepalive timeout")
+				return
+			}
 		}
-	case <-time.After(businessTimeout):
-		log.Printf("ectd cli keepalive timeout")
-	}
+	}()
 }
 
 // SetTimeout set etcd lease timeout
