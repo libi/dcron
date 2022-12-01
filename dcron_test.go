@@ -23,10 +23,14 @@ var testData = make(map[string]struct{})
 
 func Test(t *testing.T) {
 
-	drv, _ := dredis.NewDriver(&dredis.Conf{
+	drv, err := dredis.NewDriver(&dredis.Conf{
 		Host: "127.0.0.1",
 		Port: 6379,
 	}, redis.DialConnectTimeout(time.Second*10))
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	go runNode(t, drv)
 	// 间隔1秒启动测试节点刷新逻辑
@@ -37,9 +41,11 @@ func Test(t *testing.T) {
 
 	//add recover
 	dcron2 := NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
+	dcron2.Start()
+	dcron2.Stop()
 
 	//panic recover test
-	err := dcron2.AddFunc("s2 test1", "* * * * *", func() {
+	err = dcron2.AddFunc("s2 test1", "* * * * *", func() {
 		panic("panic test")
 	})
 	if err != nil {
@@ -75,6 +81,7 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal("add func error")
 	}
+
 	err = dcron3.AddFunc("s3 test2", "* * * * *", func() {
 		t.Log("执行 server3 test2 任务", time.Now().Format("15:04:05"))
 	})
@@ -92,6 +99,8 @@ func Test(t *testing.T) {
 	//测试120秒后退出
 	time.Sleep(120 * time.Second)
 	t.Log("testData", testData)
+	dcron2.Stop()
+	dcron3.Stop()
 }
 
 func runNode(t *testing.T, drv *dredis.RedisDriver) {
@@ -100,7 +109,7 @@ func runNode(t *testing.T, drv *dredis.RedisDriver) {
 
 	err := dcron.AddFunc("s1 test1", "* * * * *", func() {
 		// 同时启动3个节点 但是一个 job 同一时间只会执行一次 通过 map 判重
-		key := "s1 test1" + time.Now().Format("15:04:05")
+		key := "s1 test1 : " + time.Now().Format("15:04")
 		if _, ok := testData[key]; ok {
 			t.Error("job have running in other node")
 		}

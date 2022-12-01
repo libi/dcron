@@ -4,10 +4,11 @@ import (
 	"github.com/libi/dcron/consistenthash"
 	"github.com/libi/dcron/driver"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-//NodePool is a node pool
+// NodePool is a node pool
 type NodePool struct {
 	serviceName string
 	NodeID      string
@@ -75,7 +76,7 @@ func (np *NodePool) updatePool() error {
 func (np *NodePool) tickerUpdatePool() {
 	tickers := time.NewTicker(np.updateDuration)
 	for range tickers.C {
-		if np.dcron.isRun {
+		if atomic.LoadInt32(&np.dcron.running) == dcronRunning {
 			err := np.updatePool()
 			if err != nil {
 				np.dcron.err("update node pool error %+v", err)
@@ -87,7 +88,7 @@ func (np *NodePool) tickerUpdatePool() {
 	}
 }
 
-//PickNodeByJobName : 使用一致性hash算法根据任务名获取一个执行节点
+// PickNodeByJobName : 使用一致性hash算法根据任务名获取一个执行节点
 func (np *NodePool) PickNodeByJobName(jobName string) string {
 	np.mu.Lock()
 	defer np.mu.Unlock()
