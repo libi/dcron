@@ -27,7 +27,8 @@ type Dcron struct {
 	nodePool   *NodePool
 	running    int32
 
-	logger interface{ Printf(string, ...interface{}) }
+	logger  interface{ Printf(string, ...interface{}) }
+	logInfo bool
 
 	nodeUpdateDuration time.Duration
 	hashReplicas       int
@@ -80,7 +81,9 @@ func (d *Dcron) GetLogger() interface{ Printf(string, ...interface{}) } {
 }
 
 func (d *Dcron) info(format string, v ...interface{}) {
-	d.logger.Printf("INFO: "+format, v...)
+	if d.logInfo {
+		d.logger.Printf("INFO: "+format, v...)
+	}
 }
 func (d *Dcron) err(format string, v ...interface{}) {
 	d.logger.Printf("ERR: "+format, v...)

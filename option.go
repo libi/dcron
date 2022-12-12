@@ -19,6 +19,13 @@ func WithLogger(logger interface{ Printf(string, ...interface{}) }) Option {
 	}
 }
 
+// PrintLogInfo set log info level
+func WithPrintLogInfo() Option {
+	return func(dcron *Dcron) {
+		dcron.logInfo = true
+	}
+}
+
 // WithNodeUpdateDuration set node update duration
 func WithNodeUpdateDuration(d time.Duration) Option {
 	return func(dcron *Dcron) {
