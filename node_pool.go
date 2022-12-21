@@ -24,11 +24,11 @@ type NodePool struct {
 	dcron *Dcron
 }
 
-func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) *NodePool {
+func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) (*NodePool, error) {
 
 	err := driver.Ping()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	nodePool := &NodePool{
@@ -38,7 +38,7 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDu
 		hashReplicas:   hashReplicas,
 		updateDuration: updateDuration,
 	}
-	return nodePool
+	return nodePool, nil
 }
 
 // StartPool Start Service Watch Pool

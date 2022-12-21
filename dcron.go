@@ -43,7 +43,12 @@ func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) 
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
 	dcron.running = dcronStoped
-	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
+	var err error
+	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
+	if err != nil {
+		dcron.err("ERR: %s", err.Error())
+		return nil
+	}
 	return dcron
 }
 
@@ -55,7 +60,13 @@ func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Op
 	}
 
 	dcron.cr = cron.New(dcron.crOptions...)
-	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
+	var err error
+	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
+	if err != nil {
+		dcron.err("ERR: %s", err.Error())
+		return nil
+	}
+
 	return dcron
 }
 
