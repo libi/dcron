@@ -66,11 +66,7 @@ func NewDriver(conf *Conf, options ...redis.DialOption) (*RedisDriver, error) {
 		IdleTimeout: conf.IdleTimeout,
 		Wait:        conf.Wait,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial(conf.Proto, conf.Addr, ops...)
-			if err != nil {
-				panic(err)
-			}
-			return c, nil
+			return redis.Dial(conf.Proto, conf.Addr, ops...)
 		},
 	}
 	return &RedisDriver{
