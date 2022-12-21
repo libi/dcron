@@ -61,12 +61,13 @@ func (np *NodePool) StartPool() error {
 }
 
 func (np *NodePool) updatePool() error {
-	np.mu.Lock()
-	defer np.mu.Unlock()
 	nodes, err := np.Driver.GetServiceNodeList(np.serviceName)
 	if err != nil {
 		return err
 	}
+
+	np.mu.Lock()
+	defer np.mu.Unlock()
 	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
 	for _, node := range nodes {
 		np.nodes.Add(node)
