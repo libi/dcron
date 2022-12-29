@@ -1,15 +1,17 @@
 package dcron
 
 import (
-	"github.com/robfig/cron/v3"
 	"time"
+
+	"github.com/libi/dcron/dlog"
+	"github.com/robfig/cron/v3"
 )
 
 // Option is Dcron Option
 type Option func(*Dcron)
 
 // WithLogger both set dcron and cron logger.
-func WithLogger(logger interface{ Printf(string, ...interface{}) }) Option {
+func WithLogger(logger dlog.Logger) Option {
 	return func(dcron *Dcron) {
 		//set dcron logger
 		dcron.logger = logger

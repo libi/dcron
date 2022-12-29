@@ -1,11 +1,12 @@
 package dcron
 
 import (
-	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/driver"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/libi/dcron/consistenthash"
+	"github.com/libi/dcron/driver"
 )
 
 // NodePool is a node pool
@@ -13,7 +14,7 @@ type NodePool struct {
 	serviceName string
 	NodeID      string
 
-	mu    sync.Mutex
+	rwMut sync.RWMutex
 	nodes *consistenthash.Map
 
 	Driver         driver.Driver
@@ -66,8 +67,8 @@ func (np *NodePool) updatePool() error {
 		return err
 	}
 
-	np.mu.Lock()
-	defer np.mu.Unlock()
+	np.rwMut.Lock()
+	defer np.rwMut.Unlock()
 	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
 	for _, node := range nodes {
 		np.nodes.Add(node)
@@ -91,8 +92,8 @@ func (np *NodePool) tickerUpdatePool() {
 
 // PickNodeByJobName : 使用一致性hash算法根据任务名获取一个执行节点
 func (np *NodePool) PickNodeByJobName(jobName string) string {
-	np.mu.Lock()
-	defer np.mu.Unlock()
+	np.rwMut.RLock()
+	defer np.rwMut.RUnlock()
 	if np.nodes.IsEmpty() {
 		return ""
 	}

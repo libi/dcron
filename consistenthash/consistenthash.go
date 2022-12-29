@@ -54,7 +54,8 @@ func (m *Map) IsEmpty() bool {
 func (m *Map) Add(keys ...string) {
 	for _, key := range keys {
 		for i := 0; i < m.replicas; i++ {
-			hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
+			// use replicas id + _ + key to avoid the key has pre-number.
+			hash := int(m.hash([]byte(strconv.Itoa(i) + "_" + key)))
 			if m.hashMap[hash] == "" {
 				m.keys = append(m.keys, hash)
 				m.hashMap[hash] = key
