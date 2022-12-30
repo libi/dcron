@@ -4,6 +4,8 @@ Dcron
 [![Tests](https://github.com/libi/dcron/actions/workflows/test.yml/badge.svg)](https://github.com/libi/dcron/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/libi/dcron#1)](https://goreportcard.com/report/github.com/libi/dcron)
 
+[简体中文](README.md)|[English](README_EN.md)
+
 a lightweight distributed job scheduler  library based on redis or etcd
 
 轻量分布式定时任务库
