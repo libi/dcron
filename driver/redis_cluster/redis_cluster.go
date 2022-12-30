@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 // GlobalKeyPrefix is global redis key preifx

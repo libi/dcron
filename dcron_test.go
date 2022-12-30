@@ -1,14 +1,16 @@
-package dcron
+package dcron_test
 
 import (
 	"fmt"
-	"github.com/gomodule/redigo/redis"
-	dredis "github.com/libi/dcron/driver/redis"
-	"github.com/robfig/cron/v3"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
+	"github.com/libi/dcron"
+	RedisDriver "github.com/libi/dcron/driver/redis"
+	"github.com/robfig/cron/v3"
 )
 
 type TestJob1 struct {
@@ -23,7 +25,7 @@ var testData = make(map[string]struct{})
 
 func Test(t *testing.T) {
 
-	drv, err := dredis.NewDriver(&dredis.Conf{
+	drv, err := RedisDriver.NewDriver(&RedisDriver.Conf{
 		Host: "127.0.0.1",
 		Port: 6379,
 	}, redis.DialConnectTimeout(time.Second*10))
@@ -40,7 +42,7 @@ func Test(t *testing.T) {
 	go runNode(t, drv)
 
 	//add recover
-	dcron2 := NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
+	dcron2 := dcron.NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
 	dcron2.Start()
 	dcron2.Stop()
 
@@ -68,10 +70,13 @@ func Test(t *testing.T) {
 	// set logger
 	logger := log.New(os.Stdout, "[test_s3]", log.LstdFlags)
 	// wrap cron recover
-	rec := CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
+	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
 
 	// option test
-	dcron3 := NewDcronWithOption("server3", drv, rec, WithLogger(logger), WithHashReplicas(10), WithNodeUpdateDuration(time.Second*10))
+	dcron3 := dcron.NewDcronWithOption("server3", drv, rec,
+		dcron.WithLogger(logger),
+		dcron.WithHashReplicas(10),
+		dcron.WithNodeUpdateDuration(time.Second*10))
 
 	//panic recover test
 	err = dcron3.AddFunc("s3 test1", "* * * * *", func() {
@@ -103,8 +108,8 @@ func Test(t *testing.T) {
 	dcron3.Stop()
 }
 
-func runNode(t *testing.T, drv *dredis.RedisDriver) {
-	dcron := NewDcron("server1", drv)
+func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
+	dcron := dcron.NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
 	err := dcron.AddFunc("s1 test1", "* * * * *", func() {

@@ -3,10 +3,11 @@ package redis
 import (
 	"errors"
 	"fmt"
-	"github.com/gomodule/redigo/redis"
-	"github.com/google/uuid"
 	"log"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 )
 
 // GlobalKeyPrefix is global redis key preifx
