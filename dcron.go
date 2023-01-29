@@ -2,12 +2,14 @@ package dcron
 
 import (
 	"errors"
-	"github.com/libi/dcron/driver"
-	"github.com/robfig/cron/v3"
 	"log"
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/driver"
+	"github.com/robfig/cron/v3"
 )
 
 const (
@@ -27,7 +29,7 @@ type Dcron struct {
 	nodePool   *NodePool
 	running    int32
 
-	logger  interface{ Printf(string, ...interface{}) }
+	logger  dlog.Logger
 	logInfo bool
 
 	nodeUpdateDuration time.Duration
@@ -87,7 +89,7 @@ func (d *Dcron) SetLogger(logger *log.Logger) {
 }
 
 // GetLogger get dcron logger
-func (d *Dcron) GetLogger() interface{ Printf(string, ...interface{}) } {
+func (d *Dcron) GetLogger() dlog.Logger {
 	return d.logger
 }
 
