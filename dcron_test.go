@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	RedisDriver "github.com/libi/dcron/driver/redis"
 	"github.com/robfig/cron/v3"
@@ -24,11 +24,9 @@ func (t TestJob1) Run() {
 var testData = make(map[string]struct{})
 
 func Test(t *testing.T) {
-
-	drv, err := RedisDriver.NewDriver(&RedisDriver.Conf{
-		Host: "127.0.0.1",
-		Port: 6379,
-	}, redis.DialConnectTimeout(time.Second*10))
+	drv, err := RedisDriver.NewDriver(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
 
 	if err != nil {
 		t.Error(err)

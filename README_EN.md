@@ -32,9 +32,8 @@ If use distributed-lock to implement it. I will depends on the system-time of ea
 
 1. Create redisDriver instance, set the `ServiceName` and initialize `dcron`. The `ServiceName` will defined the same task unit.
 ```golang
-  drv, _ := redis.NewDriver(&redis.Conf{
-  		Host: "127.0.0.1",
-  		Port: 6379,
+  drv, _ := redis.NewDriver(&redis.Options{
+    Host: "127.0.0.1:6379"
   })
   dcron := NewDcron("server1", drv)
 ```

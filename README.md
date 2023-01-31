@@ -31,9 +31,8 @@ a lightweight distributed job scheduler  library based on redis or etcd
 
 1.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
 ```golang
-  drv, _ := redis.NewDriver(&redis.Conf{
-  		Host: "127.0.0.1",
-  		Port: 6379,
+  drv, _ := redis.NewDriver(&redis.Options{
+    Host: "127.0.0.1:6379"
   })
   dcron := NewDcron("server1", drv)
 ```
