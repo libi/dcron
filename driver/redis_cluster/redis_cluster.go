@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 // GlobalKeyPrefix is global redis key preifx
@@ -60,7 +61,7 @@ func NewDriver(conf *Conf) (*RedisClusterDriver, error) {
 
 // Ping to check redis cluster is valid or not
 func (rd *RedisClusterDriver) Ping() error {
-	if err := rd.redisClient.Set(rd.ctx, "ping", "pong", 0).Err(); err != nil {
+	if err := rd.redisClient.Ping(rd.ctx).Err(); err != nil {
 		return err
 	}
 	return nil
@@ -76,10 +77,9 @@ func (rd *RedisClusterDriver) SetTimeout(timeout time.Duration) {
 
 //SetHeartBeat set heartbeat
 func (rd *RedisClusterDriver) SetHeartBeat(nodeID string) {
-
-	go rd.heartBear(nodeID)
+	go rd.heartBeat(nodeID)
 }
-func (rd *RedisClusterDriver) heartBear(nodeID string) {
+func (rd *RedisClusterDriver) heartBeat(nodeID string) {
 	//每间隔timeout/2设置一次key的超时时间为timeout
 	key := nodeID
 	tickers := time.NewTicker(rd.timeout / 2)
@@ -132,7 +132,7 @@ func (rd *RedisClusterDriver) scan(matchStr string) ([]string, error) {
 }
 
 type syncList struct {
-	sync.Mutex
+	sync.RWMutex
 	arr []string
 }
 
@@ -149,5 +149,7 @@ func (l *syncList) Append(val string) {
 }
 
 func (l *syncList) Values() []string {
+	l.RLock()
+	defer l.RUnlock()
 	return l.arr
 }

@@ -112,8 +112,8 @@ func (s *EtcdDriver) watcher(serviceName string) {
 func (s *EtcdDriver) setServiceList(serviceName, key, val string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if nodeMap, ok := s.serverList[serviceName]; !ok {
-		nodeMap = map[string]string{
+	if _, ok := s.serverList[serviceName]; !ok {
+		nodeMap := map[string]string{
 			key: val,
 		}
 		s.serverList[serviceName] = nodeMap
