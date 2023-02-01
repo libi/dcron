@@ -99,6 +99,10 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 	ctx := context.Background()
 	iter := rd.client.Scan(ctx, 0, matchStr, -1).Iterator()
 	for iter.Next(ctx) {
+		err := iter.Err()
+		if err != nil {
+			return nil, err
+		}
 		ret = append(ret, iter.Val())
 	}
 	return ret, nil

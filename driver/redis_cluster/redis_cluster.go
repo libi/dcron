@@ -119,10 +119,11 @@ func (rd *RedisClusterDriver) scan(matchStr string) ([]string, error) {
 	if err := rd.redisClient.ForEachMaster(rd.ctx, func(ctx context.Context, master *redis.Client) error {
 		iter := master.Scan(ctx, 0, matchStr, -1).Iterator()
 		for iter.Next(rd.ctx) {
+			err := iter.Err()
+			if err != nil {
+				return err
+			}
 			l.Append(iter.Val())
-		}
-		if err := iter.Err(); err != nil {
-			return err
 		}
 		return nil
 	}); err != nil {
