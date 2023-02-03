@@ -19,7 +19,7 @@ const (
 
 const (
 	dcronRunning = 1
-	dcronStoped  = 0
+	dcronStopped = 0
 )
 
 // Dcron is main struct
@@ -44,7 +44,7 @@ func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) 
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
-	dcron.running = dcronStoped
+	dcron.running = dcronStopped
 	var err error
 	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	if err != nil {
@@ -84,7 +84,7 @@ func newDcron(serverName string) *Dcron {
 }
 
 // SetLogger set dcron logger
-func (d *Dcron) SetLogger(logger *log.Logger) {
+func (d *Dcron) SetLogger(logger dlog.Logger) {
 	d.logger = logger
 }
 
@@ -153,9 +153,9 @@ func (d *Dcron) allowThisNodeRun(jobName string) bool {
 
 // Start job
 func (d *Dcron) Start() {
-	if atomic.CompareAndSwapInt32(&d.running, dcronStoped, dcronRunning) {
+	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
-			atomic.StoreInt32(&d.running, dcronStoped)
+			atomic.StoreInt32(&d.running, dcronStopped)
 			return
 		}
 		d.cr.Start()
@@ -167,9 +167,9 @@ func (d *Dcron) Start() {
 
 // Run Job
 func (d *Dcron) Run() {
-	if atomic.CompareAndSwapInt32(&d.running, dcronStoped, dcronRunning) {
+	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
-			atomic.StoreInt32(&d.running, dcronStoped)
+			atomic.StoreInt32(&d.running, dcronStopped)
 			return
 		}
 
@@ -190,12 +190,12 @@ func (d *Dcron) startNodePool() error {
 
 // Stop job
 func (d *Dcron) Stop() {
-	for {
-		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStoped) {
+	tick := time.NewTicker(time.Millisecond)
+	for range tick.C {
+		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
 			d.cr.Stop()
 			d.info("dcron stopped")
 			return
 		}
-		time.Sleep(time.Millisecond)
 	}
 }

@@ -1,89 +1,44 @@
 package redis
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"github.com/gomodule/redigo/redis"
-	"github.com/google/uuid"
 	"log"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 )
 
 // GlobalKeyPrefix is global redis key preifx
 const GlobalKeyPrefix = "distributed-cron:"
 
-// RedisConf is redis config
-type Conf struct {
-	Proto string
-
-	// first use addr
-	Addr     string
-	Password string
-
-	Host string
-	Port int
-
-	MaxActive   int
-	MaxIdle     int
-	IdleTimeout time.Duration
-	Wait        bool
-}
-
 // RedisDriver is redisDriver
 type RedisDriver struct {
-	conf        *Conf
-	redisClient *redis.Pool
-	timeout     time.Duration
-	Key         string
+	client  *redis.Client
+	timeout time.Duration
+	Key     string
 }
 
 // NewDriver return a redis driver
-func NewDriver(conf *Conf, options ...redis.DialOption) (*RedisDriver, error) {
-	ops := []redis.DialOption{
-		redis.DialPassword(conf.Password),
-	}
-	ops = append(ops, options...)
-
-	if conf.Proto == "" {
-		conf.Proto = "tcp"
-	}
-	if conf.MaxActive == 0 {
-		conf.MaxActive = 100
-	}
-	if conf.MaxIdle == 0 {
-		conf.MaxIdle = 100
-	}
-	if conf.IdleTimeout == 0 {
-		conf.IdleTimeout = time.Second * 5
-	}
-	if conf.Addr == "" {
-		conf.Addr = fmt.Sprintf("%s:%d", conf.Host, conf.Port)
-	}
-
-	rd := &redis.Pool{
-		MaxIdle:     conf.MaxIdle,
-		MaxActive:   conf.MaxActive,
-		IdleTimeout: conf.IdleTimeout,
-		Wait:        conf.Wait,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial(conf.Proto, conf.Addr, ops...)
-		},
-	}
+func NewDriver(opts *redis.Options) (*RedisDriver, error) {
 	return &RedisDriver{
-		conf:        conf,
-		redisClient: rd,
+		client: redis.NewClient(opts),
 	}, nil
 }
 
 // Ping is check redis valid
 func (rd *RedisDriver) Ping() error {
-	conn := rd.redisClient.Get()
-	defer conn.Close()
-	if _, err := conn.Do("SET", "ping", "pong"); err != nil {
+	reply, err := rd.client.Ping(context.Background()).Result()
+	if err != nil {
 		return err
 	}
-	return nil
+	if reply != "PONG" {
+		return fmt.Errorf("Ping received is error, %s", string(reply))
+	}
+	return err
 }
+
 func (rd *RedisDriver) getKeyPre(serviceName string) string {
 	return fmt.Sprintf("%s%s:", GlobalKeyPrefix, serviceName)
 }
@@ -93,22 +48,22 @@ func (rd *RedisDriver) SetTimeout(timeout time.Duration) {
 	rd.timeout = timeout
 }
 
-//SetHeartBeat set herbear
+//SetHeartBeat set heatbeat
 func (rd *RedisDriver) SetHeartBeat(nodeID string) {
-	go rd.heartBear(nodeID)
+	go rd.heartBeat(nodeID)
 }
-func (rd *RedisDriver) heartBear(nodeID string) {
+func (rd *RedisDriver) heartBeat(nodeID string) {
 
 	//每间隔timeout/2设置一次key的超时时间为timeout
 	key := nodeID
 	tickers := time.NewTicker(rd.timeout / 2)
 	for range tickers.C {
-		keyExist, err := redis.Int(rd.do("EXPIRE", key, int(rd.timeout/time.Second)))
+		keyExist, err := rd.client.Expire(context.Background(), key, rd.timeout).Result()
 		if err != nil {
 			log.Printf("redis expire error %+v", err)
 			continue
 		}
-		if keyExist == 0 {
+		if !keyExist {
 			if err := rd.registerServiceNode(nodeID); err != nil {
 				log.Printf("register service node error %+v", err)
 			}
@@ -136,36 +91,19 @@ func (rd *RedisDriver) randNodeID(serviceName string) (nodeID string) {
 }
 
 func (rd *RedisDriver) registerServiceNode(nodeID string) error {
-	_, err := rd.do("SETEX", nodeID, int(rd.timeout/time.Second), nodeID)
-	return err
+	return rd.client.SetEX(context.Background(), nodeID, nodeID, rd.timeout).Err()
 }
 
-func (rd *RedisDriver) do(command string, params ...interface{}) (interface{}, error) {
-	conn := rd.redisClient.Get()
-	defer conn.Close()
-	return conn.Do(command, params...)
-}
 func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
-	cursor := "0"
 	ret := make([]string, 0)
-	for {
-		reply, err := rd.do("scan", cursor, "match", matchStr)
+	ctx := context.Background()
+	iter := rd.client.Scan(ctx, 0, matchStr, -1).Iterator()
+	for iter.Next(ctx) {
+		err := iter.Err()
 		if err != nil {
 			return nil, err
 		}
-		if Reply, ok := reply.([]interface{}); ok && len(Reply) == 2 {
-			cursor = string(Reply[0].([]byte))
-
-			list := Reply[1].([]interface{})
-			for _, item := range list {
-				ret = append(ret, string(item.([]byte)))
-			}
-			if cursor == "0" {
-				break
-			}
-		} else {
-			return nil, errors.New("redis scan resp struct error")
-		}
+		ret = append(ret, iter.Val())
 	}
 	return ret, nil
 }

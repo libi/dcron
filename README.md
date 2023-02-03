@@ -4,6 +4,8 @@ Dcron
 [![Tests](https://github.com/libi/dcron/actions/workflows/test.yml/badge.svg)](https://github.com/libi/dcron/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/libi/dcron#1)](https://goreportcard.com/report/github.com/libi/dcron)
 
+[简体中文](README.md)|[English](README_EN.md)
+
 a lightweight distributed job scheduler  library based on redis or etcd
 
 轻量分布式定时任务库
@@ -29,9 +31,8 @@ a lightweight distributed job scheduler  library based on redis or etcd
 
 1.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
 ```golang
-  drv, _ := redis.NewDriver(&redis.Conf{
-  		Host: "127.0.0.1",
-  		Port: 6379,
+  drv, _ := redis.NewDriver(&redis.Options{
+    Host: "127.0.0.1:6379"
   })
   dcron := NewDcron("server1", drv)
 ```
