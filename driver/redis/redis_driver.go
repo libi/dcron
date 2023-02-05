@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
+	"github.com/libi/dcron/dlog"
 )
 
 // GlobalKeyPrefix is global redis key preifx
@@ -18,12 +19,16 @@ type RedisDriver struct {
 	client  *redis.Client
 	timeout time.Duration
 	Key     string
+	logger  dlog.Logger
 }
 
 // NewDriver return a redis driver
 func NewDriver(opts *redis.Options) (*RedisDriver, error) {
 	return &RedisDriver{
 		client: redis.NewClient(opts),
+		logger: &dlog.StdLogger{
+			Log: log.Default(),
+		},
 	}, nil
 }
 
@@ -60,15 +65,19 @@ func (rd *RedisDriver) heartBeat(nodeID string) {
 	for range tickers.C {
 		keyExist, err := rd.client.Expire(context.Background(), key, rd.timeout).Result()
 		if err != nil {
-			log.Printf("redis expire error %+v", err)
+			rd.logger.Errorf("redis expire error %+v", err)
 			continue
 		}
 		if !keyExist {
 			if err := rd.registerServiceNode(nodeID); err != nil {
-				log.Printf("register service node error %+v", err)
+				rd.logger.Errorf("register service node error %+v", err)
 			}
 		}
 	}
+}
+
+func (rd *RedisDriver) SetLogger(log dlog.Logger) {
+	rd.logger = log
 }
 
 //GetServiceNodeList get a serveice node  list

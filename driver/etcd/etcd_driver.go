@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -26,6 +27,7 @@ type EtcdDriver struct {
 	serverList map[string]map[string]string
 	lock       sync.RWMutex
 	leaseID    clientv3.LeaseID
+	logger     dlog.Logger
 }
 
 //NewEtcdDriver ...
@@ -38,6 +40,9 @@ func NewEtcdDriver(config *clientv3.Config) (*EtcdDriver, error) {
 	ser := &EtcdDriver{
 		cli:        cli,
 		serverList: make(map[string]map[string]string, 10),
+		logger: &dlog.StdLogger{
+			Log: log.Default(),
+		},
 	}
 
 	return ser, nil
@@ -152,7 +157,7 @@ func (e *EtcdDriver) keepAlive(ctx context.Context, nodeID string) (<-chan *clie
 	var err error
 	e.leaseID, err = e.putKeyWithLease(nodeID, nodeID)
 	if err != nil {
-		log.Printf("putKeyWithLease error: %v", err)
+		e.logger.Errorf("putKeyWithLease error: %v", err)
 		return nil, err
 	}
 
@@ -169,14 +174,14 @@ func (e *EtcdDriver) revoke() {
 func (e *EtcdDriver) SetHeartBeat(nodeID string) {
 	leaseCh, err := e.keepAlive(context.Background(), nodeID)
 	if err != nil {
-		log.Printf("setHeartBeat error: %v", err)
+		e.logger.Errorf("setHeartBeat error: %v", err)
 		return
 	}
 	go func() {
 		defer func() {
 			err := recover()
 			if err != nil {
-				log.Printf("keepAlive panic: %v", err)
+				e.logger.Errorf("keepAlive panic: %v", err)
 				return
 			}
 		}()
@@ -189,11 +194,15 @@ func (e *EtcdDriver) SetHeartBeat(nodeID string) {
 					return
 				}
 			case <-time.After(businessTimeout):
-				log.Printf("ectd cli keepalive timeout")
+				e.logger.Errorf("ectd cli keepalive timeout")
 				return
 			}
 		}
 	}()
+}
+
+func (e *EtcdDriver) SetLogger(log dlog.Logger) {
+	e.logger = log
 }
 
 // SetTimeout set etcd lease timeout
