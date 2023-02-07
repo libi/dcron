@@ -16,7 +16,7 @@ func WithLogger(logger dlog.Logger) Option {
 		//set dcron logger
 		dcron.logger = logger
 		//set cron logger
-		f := cron.WithLogger(cron.PrintfLogger(logger.GetLog()))
+		f := cron.WithLogger(cron.PrintfLogger(logger))
 		dcron.crOptions = append(dcron.crOptions, f)
 	}
 }

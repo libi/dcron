@@ -7,11 +7,10 @@ type PrintfLogger interface {
 }
 
 type Logger interface {
+	PrintfLogger
 	Infof(string, ...interface{})
 	Warnf(string, ...interface{})
 	Errorf(string, ...interface{})
-
-	GetLog() PrintfLogger
 }
 
 type StdLogger struct {
@@ -30,4 +29,6 @@ func (l *StdLogger) Errorf(format string, args ...interface{}) {
 	l.Log.Printf("[ERROR] "+format, args...)
 }
 
-func (l *StdLogger) GetLog() PrintfLogger { return l.Log }
+func (l *StdLogger) Printf(format string, args ...interface{}) {
+	l.Log.Printf(format, args...)
+}
