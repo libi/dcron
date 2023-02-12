@@ -71,7 +71,7 @@ func Test(t *testing.T) {
 		Log: log.New(os.Stdout, "[test_s3]", log.LstdFlags),
 	}
 	// wrap cron recover
-	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger.Log)))
+	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
 
 	// option test
 	dcron3 := dcron.NewDcronWithOption("server3", drv, rec,
