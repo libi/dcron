@@ -81,7 +81,7 @@ func (np *NodePool) tickerUpdatePool() {
 		if atomic.LoadInt32(&np.dcron.running) == dcronRunning {
 			err := np.updatePool()
 			if err != nil {
-				np.dcron.err("update node pool error %+v", err)
+				np.dcron.logger.Infof("update node pool error %+v", err)
 			}
 		} else {
 			tickers.Stop()

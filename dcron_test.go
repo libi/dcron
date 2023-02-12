@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
+	"github.com/libi/dcron/dlog"
 	RedisDriver "github.com/libi/dcron/driver/redis"
 	"github.com/robfig/cron/v3"
 )
@@ -66,7 +67,9 @@ func Test(t *testing.T) {
 	dcron2.Start()
 
 	// set logger
-	logger := log.New(os.Stdout, "[test_s3]", log.LstdFlags)
+	logger := &dlog.StdLogger{
+		Log: log.New(os.Stdout, "[test_s3]", log.LstdFlags),
+	}
 	// wrap cron recover
 	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
 
