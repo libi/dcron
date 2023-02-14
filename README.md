@@ -71,3 +71,6 @@ dcron := NewDcron("server1", drv,cron.WithSeconds())
 服务名是为了定义相同一组任务，可以理解为任务分配和调度的边界。
 
 多个节点使用同一个服务名会被视为同一任务组，在同一个任务组内的任务会均匀分配至组内各个节点并确保不会重复执行
+
+### 使用例
+[example](example/README.md)
