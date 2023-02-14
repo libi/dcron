@@ -1,6 +1,6 @@
 # example
 
-This sub dir is an example code for dcron.
+This [code](example.go) is an example code for dcron.
 
 ## compile
 
