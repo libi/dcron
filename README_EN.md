@@ -69,3 +69,6 @@ Otherwise, you can sue `NewDcronWithOption` to initialize, to set the logger or 
 The `ServiceName` is used to define the same set of tasks, which can be understood as the boundary of task allocation and scheduling. 
 
 Multiple nodes using the same service name will be considered as the same task group. Tasks in the same task group will be evenly distributed to each node in the group and will not be executed repeatedly.
+
+### Exmaple
+[example](example/README.md)

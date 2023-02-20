@@ -9,6 +9,10 @@ on:
 jobs:
 
   tests:
+    name: Test on go ${{ matrix.go_version }}
+      strategy:
+        matrix:
+          go_version: ["1.18", "1.17", "1.16"]
     runs-on: ubuntu-latest
 
     steps:
@@ -19,7 +23,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: ${{ matrix.go_version }}
 
     - name: Test
       run: go test -v ./...
