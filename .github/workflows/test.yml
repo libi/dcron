@@ -10,9 +10,9 @@ jobs:
 
   tests:
     name: Test on go ${{ matrix.go_version }}
-      strategy:
-        matrix:
-          go_version: ["1.18", "1.17", "1.16"]
+    strategy:
+      matrix:
+        go_version: ["1.18", "1.17", "1.16"]
     runs-on: ubuntu-latest
 
     steps:
