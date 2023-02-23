@@ -53,7 +53,7 @@ dcron.Start()
 dcron.Run()
 ```
 
-### Exmaple
+### Example
 [example](example/README.md)
 
 
