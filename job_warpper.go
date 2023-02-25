@@ -7,6 +7,15 @@ type Job interface {
 	Run()
 }
 
+// This type of Job will be
+// recovered in a node of service
+// restarting.
+type StableJob interface {
+	Job
+	Serialize() ([]byte, error)
+	UnSerialize([]byte) error
+}
+
 //JobWarpper is a job warpper
 type JobWarpper struct {
 	ID      cron.EntryID

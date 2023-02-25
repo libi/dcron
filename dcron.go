@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -24,7 +25,9 @@ const (
 
 // Dcron is main struct
 type Dcron struct {
-	jobs       map[string]*JobWarpper
+	jobs      map[string]*JobWarpper
+	jobsRWMut sync.Mutex
+
 	ServerName string
 	nodePool   *NodePool
 	running    int32
@@ -106,6 +109,9 @@ func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 }
 func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
 	d.logger.Infof("addJob '%s' :  %s", jobName, cronStr)
+
+	d.jobsRWMut.Lock()
+	defer d.jobsRWMut.Unlock()
 	if _, ok := d.jobs[jobName]; ok {
 		return errors.New("jobName already exist")
 	}
@@ -122,12 +128,14 @@ func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error)
 	}
 	innerJob.ID = entryID
 	d.jobs[jobName] = &innerJob
-
 	return nil
 }
 
 // Remove Job
 func (d *Dcron) Remove(jobName string) {
+	d.jobsRWMut.Lock()
+	defer d.jobsRWMut.Unlock()
+
 	if job, ok := d.jobs[jobName]; ok {
 		delete(d.jobs, jobName)
 		d.cr.Remove(job.ID)

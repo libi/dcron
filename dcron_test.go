@@ -148,3 +148,22 @@ func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
 	//移除测试
 	dcron.Remove("s1 test3")
 }
+
+func Test_SecondsJob(t *testing.T) {
+	drv, err := RedisDriver.NewDriver(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
+	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+		t.Log(time.Now())
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	dcr.Start()
+	time.Sleep(15 * time.Second)
+	dcr.Stop()
+}
