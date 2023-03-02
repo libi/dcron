@@ -12,6 +12,7 @@ type Job interface {
 // restarting.
 type StableJob interface {
 	Job
+	GetCron() string
 	Serialize() ([]byte, error)
 	UnSerialize([]byte) error
 }

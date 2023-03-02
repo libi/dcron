@@ -53,7 +53,7 @@ dcron.Run()
 ```
 
 ### 使用案例
-[example](example/README.md)
+[examples](examples/example/README.md)
 
 ### 更多配置
 

@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -9,10 +10,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/driver"
 )
-
-// GlobalKeyPrefix is global redis key preifx
-const GlobalKeyPrefix = "distributed-cron:"
 
 // RedisDriver is redisDriver
 type RedisDriver struct {
@@ -42,10 +41,6 @@ func (rd *RedisDriver) Ping() error {
 		return fmt.Errorf("Ping received is error, %s", string(reply))
 	}
 	return err
-}
-
-func (rd *RedisDriver) getKeyPre(serviceName string) string {
-	return fmt.Sprintf("%s%s:", GlobalKeyPrefix, serviceName)
 }
 
 //SetTimeout set redis timeout
@@ -82,21 +77,17 @@ func (rd *RedisDriver) SetLogger(log dlog.Logger) {
 
 //GetServiceNodeList get a serveice node  list
 func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) {
-	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
+	mathStr := fmt.Sprintf("%s*", driver.GetKeyPre(serviceName))
 	return rd.scan(mathStr)
 }
 
 //RegisterServiceNode  register a service node
 func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
-	nodeID = rd.randNodeID(serviceName)
+	nodeID = driver.GetNodeId(serviceName)
 	if err := rd.registerServiceNode(nodeID); err != nil {
 		return "", err
 	}
 	return nodeID, nil
-}
-
-func (rd *RedisDriver) randNodeID(serviceName string) (nodeID string) {
-	return rd.getKeyPre(serviceName) + uuid.New().String()
 }
 
 func (rd *RedisDriver) registerServiceNode(nodeID string) error {
@@ -115,4 +106,62 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 		ret = append(ret, iter.Val())
 	}
 	return ret, nil
+}
+
+/**
+Use redis transaction to make the store / remove safety.
+**/
+
+func (rd *RedisDriver) SupportStableJob() bool { return true }
+
+func (rd *RedisDriver) Store(serviceName string, key string, body []byte) (err error) {
+	storeName := driver.GetStableJobStore(serviceName)
+	ctx := context.Background()
+	txKey := driver.GetStableJobStoreTxKey(serviceName)
+	return rd.client.Watch(ctx, func(tx *redis.Tx) error {
+		// update the txKey first.
+		if errInner := tx.Set(ctx, txKey, uuid.New().String(), 0).Err(); errInner != nil {
+			rd.logger.Errorf("Store Incr: %v", errInner)
+			return errInner
+		}
+
+		// check if job is existed
+		if existBody, errInner := tx.HGet(ctx, storeName, key).Result(); existBody != "" && errInner == nil {
+			rd.logger.Errorf("this job is existed, %s", key)
+			return errors.New("job existed")
+		}
+
+		// set job info into it
+		if errInner := tx.HSet(ctx, storeName, key, body).Err(); errInner != nil {
+			rd.logger.Errorf("Store body to server: %v", errInner)
+			return errInner
+		}
+		return nil
+	}, txKey)
+}
+
+func (rd *RedisDriver) Get(serviceName string, key string) (body []byte, err error) {
+	storeName := driver.GetStableJobStore(serviceName)
+	existBody, err := rd.client.HGet(context.Background(), storeName, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(existBody), nil
+}
+
+func (rd *RedisDriver) Remove(serviceName string, key string) (err error) {
+	storeName := driver.GetStableJobStore(serviceName)
+	ctx := context.Background()
+	txKey := driver.GetStableJobStoreTxKey(serviceName)
+	return rd.client.Watch(ctx, func(tx *redis.Tx) error {
+		if errInner := tx.Incr(ctx, txKey).Err(); errInner != nil {
+			rd.logger.Errorf("Remove Incr: %v", errInner)
+			return errInner
+		}
+		if errInner := tx.HDel(ctx, storeName, key).Err(); errInner != nil {
+			rd.logger.Errorf("Remove from server: %v", errInner)
+			return errInner
+		}
+		return nil
+	}, txKey)
 }

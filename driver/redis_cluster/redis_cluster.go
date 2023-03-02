@@ -9,12 +9,9 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/driver"
 )
-
-// GlobalKeyPrefix is global redis key preifx
-const GlobalKeyPrefix = "distributed-cron:"
 
 // Conf is redis cluster client config
 type Conf struct {
@@ -71,9 +68,6 @@ func (rd *RedisClusterDriver) Ping() error {
 	}
 	return nil
 }
-func (rd *RedisClusterDriver) getKeyPre(serviceName string) string {
-	return GlobalKeyPrefix + serviceName + ":"
-}
 
 //SetTimeout set redis key expiration timeout
 func (rd *RedisClusterDriver) SetTimeout(timeout time.Duration) {
@@ -98,17 +92,14 @@ func (rd *RedisClusterDriver) heartBeat(nodeID string) {
 
 //GetServiceNodeList get a service node  list on redis cluster
 func (rd *RedisClusterDriver) GetServiceNodeList(serviceName string) ([]string, error) {
-	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
+	mathStr := fmt.Sprintf("%s*", driver.GetKeyPre(serviceName))
 	return rd.scan(mathStr)
 }
 
 //RegisterServiceNode  register a service node
 func (rd *RedisClusterDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
-
-	nodeID = uuid.New().String()
-
-	key := rd.getKeyPre(serviceName) + nodeID
-
+	nodeID = driver.GetNodeId(serviceName)
+	key := driver.GetKeyPre(serviceName) + nodeID
 	if err := rd.redisClient.Set(rd.ctx, key, nodeID, rd.timeout).Err(); err != nil {
 		return "", err
 	}
@@ -139,6 +130,19 @@ func (rd *RedisClusterDriver) scan(matchStr string) ([]string, error) {
 		return l.Values(), err
 	}
 	return l.Values(), nil
+}
+
+func (rd *RedisClusterDriver) SupportStableJob() bool {
+	return false
+}
+func (rd *RedisClusterDriver) Store(serviceName string, key string, body []byte) (err error) {
+	panic("Not implement")
+}
+func (rd *RedisClusterDriver) Get(serviceName string, key string) (body []byte, err error) {
+	panic("Not implement")
+}
+func (rd *RedisClusterDriver) Remove(serviceName string, key string) (err error) {
+	panic("Not implement")
 }
 
 type syncList struct {

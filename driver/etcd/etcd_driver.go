@@ -228,3 +228,17 @@ func (e *EtcdDriver) RegisterServiceNode(serviceName string) (string, error) {
 	}
 	return nodeId, nil
 }
+
+func (e *EtcdDriver) SupportStableJob() bool {
+	return false
+}
+
+func (e *EtcdDriver) Store(serviceName string, key string, body []byte) (err error) {
+	panic("Not implement")
+}
+func (e *EtcdDriver) Get(serviceName string, key string) (body []byte, err error) {
+	panic("Not implement")
+}
+func (e *EtcdDriver) Remove(serviceName string, key string) (err error) {
+	panic("Not implement")
+}

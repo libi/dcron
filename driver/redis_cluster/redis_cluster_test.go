@@ -1,6 +1,10 @@
 package redis_cluster
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/libi/dcron/driver"
+)
 
 func TestClusterScan(t *testing.T) {
 	rd, err := NewDriver(&Conf{
@@ -9,7 +13,7 @@ func TestClusterScan(t *testing.T) {
 	if err != nil {
 		return
 	}
-	matchStr := rd.getKeyPre("service")
+	matchStr := driver.GetKeyPre("service")
 	ret, err := rd.scan(matchStr)
 	if err != nil {
 		t.Log(err)

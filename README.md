@@ -54,7 +54,7 @@ dcron.Run()
 ```
 
 ### Example
-[example](example/README.md)
+[examples](examples/example/README.md)
 
 
 ### More configurations.
