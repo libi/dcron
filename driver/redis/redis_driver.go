@@ -2,13 +2,11 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 )
@@ -106,62 +104,4 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 		ret = append(ret, iter.Val())
 	}
 	return ret, nil
-}
-
-/**
-Use redis transaction to make the store / remove safety.
-**/
-
-func (rd *RedisDriver) SupportStableJob() bool { return true }
-
-func (rd *RedisDriver) Store(serviceName string, key string, body []byte) (err error) {
-	storeName := driver.GetStableJobStore(serviceName)
-	ctx := context.Background()
-	txKey := driver.GetStableJobStoreTxKey(serviceName)
-	return rd.client.Watch(ctx, func(tx *redis.Tx) error {
-		// update the txKey first.
-		if errInner := tx.Set(ctx, txKey, uuid.New().String(), 0).Err(); errInner != nil {
-			rd.logger.Errorf("Store Incr: %v", errInner)
-			return errInner
-		}
-
-		// check if job is existed
-		if existBody, errInner := tx.HGet(ctx, storeName, key).Result(); existBody != "" && errInner == nil {
-			rd.logger.Errorf("this job is existed, %s", key)
-			return errors.New("job existed")
-		}
-
-		// set job info into it
-		if errInner := tx.HSet(ctx, storeName, key, body).Err(); errInner != nil {
-			rd.logger.Errorf("Store body to server: %v", errInner)
-			return errInner
-		}
-		return nil
-	}, txKey)
-}
-
-func (rd *RedisDriver) Get(serviceName string, key string) (body []byte, err error) {
-	storeName := driver.GetStableJobStore(serviceName)
-	existBody, err := rd.client.HGet(context.Background(), storeName, key).Result()
-	if err != nil {
-		return nil, err
-	}
-	return []byte(existBody), nil
-}
-
-func (rd *RedisDriver) Remove(serviceName string, key string) (err error) {
-	storeName := driver.GetStableJobStore(serviceName)
-	ctx := context.Background()
-	txKey := driver.GetStableJobStoreTxKey(serviceName)
-	return rd.client.Watch(ctx, func(tx *redis.Tx) error {
-		if errInner := tx.Incr(ctx, txKey).Err(); errInner != nil {
-			rd.logger.Errorf("Remove Incr: %v", errInner)
-			return errInner
-		}
-		if errInner := tx.HDel(ctx, storeName, key).Err(); errInner != nil {
-			rd.logger.Errorf("Remove from server: %v", errInner)
-			return errInner
-		}
-		return nil
-	}, txKey)
 }

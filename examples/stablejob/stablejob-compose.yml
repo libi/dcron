@@ -1,0 +1,10 @@
+version: "3"
+services:
+  stablejob:
+    environment:
+      redis_addr: "192.168.3.9:16379"
+      redis_password: "123456"
+      server_nme: "dcron"
+      job_store_key: "test-hkey"
+    image:
+      stable-job-example:latest

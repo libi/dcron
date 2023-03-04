@@ -23,6 +23,8 @@ const (
 	dcronStopped = 0
 )
 
+type RecoverFuncType func(d *Dcron)
+
 // Dcron is main struct
 type Dcron struct {
 	jobs      map[string]*JobWarpper
@@ -40,6 +42,8 @@ type Dcron struct {
 
 	cr        *cron.Cron
 	crOptions []cron.Option
+
+	RecoverFunc RecoverFuncType
 }
 
 // NewDcron create a Dcron
@@ -98,29 +102,6 @@ func (d *Dcron) GetLogger() dlog.Logger {
 	return d.logger
 }
 
-func (d *Dcron) AddStableJob(jobName string, job StableJob) (err error) {
-	if !d.nodePool.Driver.SupportStableJob() {
-		err = errors.New("stable job mode not supported")
-		return
-	}
-	b, err := job.Serialize()
-	if err != nil {
-		d.logger.Errorf("serialize job failed, %v", err)
-		return
-	}
-	err = d.nodePool.Driver.Store(d.ServerName, jobName, b)
-	if err != nil {
-		d.logger.Errorf("store job failed, %v", err)
-		return
-	}
-	err = d.addJob(jobName, job.GetCron(), nil, job)
-	if err != nil {
-		d.logger.Errorf("add stableJob failed, %v", err)
-		return
-	}
-	return
-}
-
 // AddJob  add a job
 func (d *Dcron) AddJob(jobName, cronStr string, job Job) (err error) {
 	return d.addJob(jobName, cronStr, nil, job)
@@ -177,6 +158,11 @@ func (d *Dcron) allowThisNodeRun(jobName string) bool {
 
 // Start job
 func (d *Dcron) Start() {
+	// recover jobs before starting
+	if d.RecoverFunc != nil {
+		d.RecoverFunc(d)
+	}
+
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)

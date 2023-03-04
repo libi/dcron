@@ -132,19 +132,6 @@ func (rd *RedisClusterDriver) scan(matchStr string) ([]string, error) {
 	return l.Values(), nil
 }
 
-func (rd *RedisClusterDriver) SupportStableJob() bool {
-	return false
-}
-func (rd *RedisClusterDriver) Store(serviceName string, key string, body []byte) (err error) {
-	panic("Not implement")
-}
-func (rd *RedisClusterDriver) Get(serviceName string, key string) (body []byte, err error) {
-	panic("Not implement")
-}
-func (rd *RedisClusterDriver) Remove(serviceName string, key string) (err error) {
-	panic("Not implement")
-}
-
 type syncList struct {
 	sync.RWMutex
 	arr []string
