@@ -1,10 +1,14 @@
 # stablejob
 
-This **JUST** an example to explain the usage of DCRON stable job.
+This is **JUST** an example to explain the usage of DCRON stable job.
+In this exmaple, we defined a type of job: **execute a bash command** .
+For run this example, you should install redis, docker and docker-compose first.
 
-In this exmaple, we defined a type of job: **execute a bash command** 
+## add jobs
+1. Start the redis
+2. Run the [tools](../tools/tools.go) first, to store the job.
 
-## build
+## build and run
 ```bash
 # in dcron srcRoot dir
 # build image

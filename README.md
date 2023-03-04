@@ -27,6 +27,7 @@ If use distributed-lock to implement it. I will depends on the system-time of ea
 - Failover: If a single node fails, the task will be automatically transferred to other normal nodes after 10 seconds. 
 - Unique: The same task in the same service will only start a single running instance, and will not be executed repeatedly. 
 - Customized storage: add the node storage mode by implementing the driver interface.
+- Automatic recovery: if the process restart, the jobs which **have been store** will be recovered into memory.
 
 ### Get Started
 
@@ -54,7 +55,7 @@ dcron.Run()
 ```
 
 ### Example
-[examples](examples/example/README.md)
+[examples](examples/)
 
 
 ### More configurations.

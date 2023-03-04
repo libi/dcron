@@ -26,6 +26,7 @@ a lightweight distributed job scheduler  library based on redis or etcd
 - 故障转移：单个节点故障，10s后会自动将任务自动转移至其他正常节点。
 - 任务唯一：同一个服务内同一个任务只会启动单个运行实例，不会重复执行。
 - 自定义存储：通过实现driver接口来增加节点数据存储方式。
+- 自动恢复：如果进程重启，则**被持久化过的**任务会被自动加载
 
 ### 快速开始
 
@@ -53,7 +54,7 @@ dcron.Run()
 ```
 
 ### 使用案例
-[examples](examples/example/README.md)
+[examples](examples/)
 
 ### 更多配置
 
