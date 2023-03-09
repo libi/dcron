@@ -7,12 +7,9 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/driver"
 )
-
-// GlobalKeyPrefix is global redis key preifx
-const GlobalKeyPrefix = "distributed-cron:"
 
 // RedisDriver is redisDriver
 type RedisDriver struct {
@@ -42,10 +39,6 @@ func (rd *RedisDriver) Ping() error {
 		return fmt.Errorf("Ping received is error, %s", string(reply))
 	}
 	return err
-}
-
-func (rd *RedisDriver) getKeyPre(serviceName string) string {
-	return fmt.Sprintf("%s%s:", GlobalKeyPrefix, serviceName)
 }
 
 //SetTimeout set redis timeout
@@ -82,21 +75,17 @@ func (rd *RedisDriver) SetLogger(log dlog.Logger) {
 
 //GetServiceNodeList get a serveice node  list
 func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) {
-	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
+	mathStr := fmt.Sprintf("%s*", driver.GetKeyPre(serviceName))
 	return rd.scan(mathStr)
 }
 
 //RegisterServiceNode  register a service node
 func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
-	nodeID = rd.randNodeID(serviceName)
+	nodeID = driver.GetNodeId(serviceName)
 	if err := rd.registerServiceNode(nodeID); err != nil {
 		return "", err
 	}
 	return nodeID, nil
-}
-
-func (rd *RedisDriver) randNodeID(serviceName string) (nodeID string) {
-	return rd.getKeyPre(serviceName) + uuid.New().String()
 }
 
 func (rd *RedisDriver) registerServiceNode(nodeID string) error {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,9 +23,13 @@ const (
 	dcronStopped = 0
 )
 
+type RecoverFuncType func(d *Dcron)
+
 // Dcron is main struct
 type Dcron struct {
-	jobs       map[string]*JobWarpper
+	jobs      map[string]*JobWarpper
+	jobsRWMut sync.Mutex
+
 	ServerName string
 	nodePool   *NodePool
 	running    int32
@@ -37,6 +42,8 @@ type Dcron struct {
 
 	cr        *cron.Cron
 	crOptions []cron.Option
+
+	RecoverFunc RecoverFuncType
 }
 
 // NewDcron create a Dcron
@@ -106,6 +113,9 @@ func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 }
 func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
 	d.logger.Infof("addJob '%s' :  %s", jobName, cronStr)
+
+	d.jobsRWMut.Lock()
+	defer d.jobsRWMut.Unlock()
 	if _, ok := d.jobs[jobName]; ok {
 		return errors.New("jobName already exist")
 	}
@@ -122,12 +132,14 @@ func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error)
 	}
 	innerJob.ID = entryID
 	d.jobs[jobName] = &innerJob
-
 	return nil
 }
 
 // Remove Job
 func (d *Dcron) Remove(jobName string) {
+	d.jobsRWMut.Lock()
+	defer d.jobsRWMut.Unlock()
+
 	if job, ok := d.jobs[jobName]; ok {
 		delete(d.jobs, jobName)
 		d.cr.Remove(job.ID)
@@ -146,6 +158,11 @@ func (d *Dcron) allowThisNodeRun(jobName string) bool {
 
 // Start job
 func (d *Dcron) Start() {
+	// recover jobs before starting
+	if d.RecoverFunc != nil {
+		d.RecoverFunc(d)
+	}
+
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)

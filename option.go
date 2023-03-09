@@ -73,3 +73,11 @@ func CronOptionChain(wrappers ...cron.JobWrapper) Option {
 		dcron.crOptions = append(dcron.crOptions, f)
 	}
 }
+
+// You can defined yourself recover function to make the
+// job will be added to your dcron when the process restart
+func WithRecoverFunc(recoverFunc RecoverFuncType) Option {
+	return func(dcron *Dcron) {
+		dcron.RecoverFunc = recoverFunc
+	}
+}
