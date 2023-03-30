@@ -177,6 +177,10 @@ func (d *Dcron) Start() {
 
 // Run Job
 func (d *Dcron) Run() {
+	// recover jobs before starting
+	if d.RecoverFunc != nil {
+		d.RecoverFunc(d)
+	}
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)

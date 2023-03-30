@@ -16,3 +16,9 @@ type Driver interface {
 	GetServiceNodeList(ServiceName string) ([]string, error)
 	RegisterServiceNode(ServiceName string) (string, error)
 }
+
+type DriverV2 interface {
+	Init(serviceName string, timeout time.Duration, logger dlog.Logger)
+	GetServiceNodeList() ([]string, error)
+	Start() error
+}

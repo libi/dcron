@@ -26,12 +26,6 @@ type NodePool struct {
 }
 
 func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) (*NodePool, error) {
-
-	err := driver.Ping()
-	if err != nil {
-		return nil, err
-	}
-
 	nodePool := &NodePool{
 		Driver:         driver,
 		serviceName:    serverName,
