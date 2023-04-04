@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/driver"
 )
 
 type RedisDriver struct {
@@ -16,14 +18,18 @@ type RedisDriver struct {
 	nodeID      string
 	timeout     time.Duration
 	logger      dlog.Logger
+	nodesChan   chan []string
+	prevNodes   []string
 }
 
-func NewRedisDriver(redisClient *redis.Client) *RedisDriver {
+func NewRedisDriver(redisClient *redis.Client) driver.DriverV2 {
 	return &RedisDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{
 			Log: log.Default(),
 		},
+		nodesChan: make(chan []string, DefaultNodesChanLength),
+		prevNodes: make([]string, 0),
 	}
 }
 
@@ -36,18 +42,40 @@ func (rd *RedisDriver) Init(serviceName string, timeout time.Duration, logger dl
 	rd.nodeID = GetNodeId(rd.serviceName)
 }
 
-func (rd *RedisDriver) GetServiceNodeList() (nodesList []string, err error) {
-	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
-	return rd.scan(mathStr)
-}
-
-func (rd *RedisDriver) Start() (err error) {
+func (rd *RedisDriver) Start() (nodesChan chan []string, err error) {
+	// register
 	err = rd.registerServiceNode()
+	// heartbeat timer
 	go rd.heartBeat()
-	return
+	// update service nodes
+	rd.updateNodes()
+	// go update timer.
+	go rd.updateNodesTimer()
+	return rd.nodesChan, err
 }
 
 // private function
+
+func (rd *RedisDriver) updateNodesTimer() {
+	tick := time.NewTicker(rd.timeout / 2)
+	for range tick.C {
+		rd.updateNodes()
+	}
+}
+
+func (rd *RedisDriver) updateNodes() {
+	nowNodes, err := rd.getServiceNodeList()
+	if err != nil {
+		rd.logger.Errorf("get service node list err, err=%v", err)
+		return
+	}
+	sort.Strings(nowNodes)
+	if EqualStringSlice(rd.prevNodes, nowNodes) {
+		return
+	}
+	rd.prevNodes = nowNodes
+	rd.nodesChan <- rd.prevNodes
+}
 
 func (rd *RedisDriver) heartBeat() {
 	tick := time.NewTicker(rd.timeout / 2)
@@ -81,4 +109,9 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 		ret = append(ret, iter.Val())
 	}
 	return ret, nil
+}
+
+func (rd *RedisDriver) getServiceNodeList() (nodesList []string, err error) {
+	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
+	return rd.scan(mathStr)
 }

@@ -19,6 +19,5 @@ type Driver interface {
 
 type DriverV2 interface {
 	Init(serviceName string, timeout time.Duration, logger dlog.Logger)
-	GetServiceNodeList() ([]string, error)
-	Start() error
+	Start() (nodesChan chan []string, err error)
 }
