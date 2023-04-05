@@ -47,34 +47,24 @@ type Dcron struct {
 }
 
 // NewDcron create a Dcron
-func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Dcron {
+func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
 	dcron.running = dcronStopped
-	var err error
-	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
-	if err != nil {
-		dcron.logger.Errorf("ERR: %s", err.Error())
-		return nil
-	}
+	dcron.nodePool = newNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
 	return dcron
 }
 
 // NewDcronWithOption create a Dcron with Dcron Option
-func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Option) *Dcron {
+func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...Option) *Dcron {
 	dcron := newDcron(serverName)
 	for _, opt := range dcronOpts {
 		opt(dcron)
 	}
 
 	dcron.cr = cron.New(dcron.crOptions...)
-	var err error
-	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
-	if err != nil {
-		dcron.logger.Errorf("ERR: %s", err.Error())
-		return nil
-	}
+	dcron.nodePool = newNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
 
 	return dcron
 }
@@ -147,13 +137,7 @@ func (d *Dcron) Remove(jobName string) {
 }
 
 func (d *Dcron) allowThisNodeRun(jobName string) bool {
-	allowRunNode := d.nodePool.PickNodeByJobName(jobName)
-	d.logger.Infof("job '%s' running in node %s", jobName, allowRunNode)
-	if allowRunNode == "" {
-		d.logger.Errorf("node pool is empty")
-		return false
-	}
-	return d.nodePool.NodeID == allowRunNode
+	return d.nodePool.CheckJobAvailable(jobName)
 }
 
 // Start job
@@ -212,4 +196,5 @@ func (d *Dcron) Stop() {
 			return
 		}
 	}
+	d.nodePool.Close()
 }

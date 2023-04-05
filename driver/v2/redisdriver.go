@@ -33,13 +33,14 @@ func NewRedisDriver(redisClient *redis.Client) driver.DriverV2 {
 	}
 }
 
-func (rd *RedisDriver) Init(serviceName string, timeout time.Duration, logger dlog.Logger) {
+func (rd *RedisDriver) Init(serviceName string, timeout time.Duration, logger dlog.Logger) string {
 	rd.serviceName = serviceName
 	rd.timeout = timeout
 	if logger != nil {
 		rd.logger = logger
 	}
 	rd.nodeID = GetNodeId(rd.serviceName)
+	return rd.nodeID
 }
 
 func (rd *RedisDriver) Start() (nodesChan chan []string, err error) {

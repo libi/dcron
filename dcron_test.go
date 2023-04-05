@@ -10,7 +10,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
-	RedisDriver "github.com/libi/dcron/driver/redis"
+	v2 "github.com/libi/dcron/driver/v2"
 	"github.com/robfig/cron/v3"
 )
 
@@ -25,26 +25,23 @@ func (t TestJob1) Run() {
 var testData = make(map[string]struct{})
 
 func Test(t *testing.T) {
-	drv, err := RedisDriver.NewDriver(&redis.Options{
-		Addr: "127.0.0.1:6379",
-	})
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	go runNode(t, drv)
+	go runNode(t)
 	// 间隔1秒启动测试节点刷新逻辑
 	time.Sleep(time.Second)
-	go runNode(t, drv)
+	go runNode(t)
 	time.Sleep(time.Second * 2)
-	go runNode(t, drv)
+	go runNode(t)
 
 	//add recover
-	dcron2 := dcron.NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
+	redisCli2 := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+	drv2 := v2.NewRedisDriver(redisCli2)
+	dcron2 := dcron.NewDcron("server2", drv2, cron.WithChain(cron.Recover(cron.DefaultLogger)))
 	dcron2.Start()
 	dcron2.Stop()
 
+	var err error
 	//panic recover test
 	err = dcron2.AddFunc("s2 test1", "* * * * *", func() {
 		panic("panic test")
@@ -74,7 +71,11 @@ func Test(t *testing.T) {
 	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
 
 	// option test
-	dcron3 := dcron.NewDcronWithOption("server3", drv, rec,
+	redisCli3 := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+	drv3 := v2.NewRedisDriver(redisCli3)
+	dcron3 := dcron.NewDcronWithOption("server3", drv3, rec,
 		dcron.WithLogger(logger),
 		dcron.WithHashReplicas(10),
 		dcron.WithNodeUpdateDuration(time.Second*10))
@@ -109,7 +110,11 @@ func Test(t *testing.T) {
 	dcron3.Stop()
 }
 
-func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
+func runNode(t *testing.T) {
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+	drv := v2.NewRedisDriver(redisCli)
 	dcron := dcron.NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
@@ -150,14 +155,12 @@ func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
 }
 
 func Test_SecondsJob(t *testing.T) {
-	drv, err := RedisDriver.NewDriver(&redis.Options{
+	redisCli := redis.NewClient(&redis.Options{
 		Addr: "127.0.0.1:6379",
 	})
-	if err != nil {
-		t.Error(err)
-	}
+	drv := v2.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
-	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+	err := dcr.AddFunc("job1", "*/5 * * * * *", func() {
 		t.Log(time.Now())
 	})
 	if err != nil {

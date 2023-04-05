@@ -1,11 +1,12 @@
 package dcron
 
 import (
+	"log"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/libi/dcron/consistenthash"
+	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 )
 
@@ -17,79 +18,77 @@ type NodePool struct {
 	rwMut sync.RWMutex
 	nodes *consistenthash.Map
 
-	Driver         driver.Driver
+	driver         driver.DriverV2
 	hashReplicas   int
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
 
-	dcron *Dcron
+	logger    dlog.Logger
+	closeChan chan interface{}
+	nodesChan chan []string
 }
 
-func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) (*NodePool, error) {
-	nodePool := &NodePool{
-		Driver:         driver,
-		serviceName:    serverName,
-		dcron:          dcron,
+func newNodePool(serviceName string, driver driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
+	np := &NodePool{
+		serviceName:    serviceName,
+		driver:         driver,
 		hashReplicas:   hashReplicas,
 		updateDuration: updateDuration,
+		logger: &dlog.StdLogger{
+			Log: log.Default(),
+		},
 	}
-	return nodePool, nil
+	if logger != nil {
+		np.logger = logger
+	}
+	np.NodeID = np.driver.Init(serviceName, updateDuration, np.logger)
+	return np
 }
 
-// StartPool Start Service Watch Pool
-func (np *NodePool) StartPool() error {
-	var err error
-	np.Driver.SetTimeout(np.updateDuration)
-	np.NodeID, err = np.Driver.RegisterServiceNode(np.serviceName)
-	if err != nil {
-		return err
-	}
-	np.Driver.SetHeartBeat(np.NodeID)
-
-	err = np.updatePool()
-	if err != nil {
-		return err
-	}
-
-	go np.tickerUpdatePool()
-	return nil
+func (np *NodePool) StartPool() (err error) {
+	np.nodesChan, err = np.driver.Start()
+	go np.waitingForHashRing()
+	return
 }
 
-func (np *NodePool) updatePool() error {
-	nodes, err := np.Driver.GetServiceNodeList(np.serviceName)
-	if err != nil {
-		return err
+// Check if this job can be run in this node.
+func (np *NodePool) CheckJobAvailable(jobName string) bool {
+	np.rwMut.RLock()
+	defer np.rwMut.RUnlock()
+	if np.nodes == nil {
+		np.logger.Errorf("nodeID=%s, np.nodes is nil", np.NodeID)
 	}
-
-	np.rwMut.Lock()
-	defer np.rwMut.Unlock()
-	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
-	for _, node := range nodes {
-		np.nodes.Add(node)
+	if np.nodes.IsEmpty() {
+		return false
 	}
-	return nil
+	targetNode := np.nodes.Get(jobName)
+	if np.NodeID == targetNode {
+		np.logger.Infof("job %s, running in node: %s", jobName, targetNode)
+	}
+	return np.NodeID == targetNode
 }
-func (np *NodePool) tickerUpdatePool() {
-	tickers := time.NewTicker(np.updateDuration)
-	for range tickers.C {
-		if atomic.LoadInt32(&np.dcron.running) == dcronRunning {
-			err := np.updatePool()
-			if err != nil {
-				np.dcron.logger.Infof("update node pool error %+v", err)
-			}
-		} else {
-			tickers.Stop()
+
+func (np *NodePool) Close() {
+	close(np.closeChan)
+}
+
+func (np *NodePool) waitingForHashRing() {
+	for {
+		select {
+		case nowNodes := <-np.nodesChan:
+			np.logger.Infof("update hashRing nowNodes=%+v", nowNodes)
+			np.updateHashRing(nowNodes)
+		case <-np.closeChan:
 			return
 		}
 	}
 }
 
-// PickNodeByJobName : 使用一致性hash算法根据任务名获取一个执行节点
-func (np *NodePool) PickNodeByJobName(jobName string) string {
-	np.rwMut.RLock()
-	defer np.rwMut.RUnlock()
-	if np.nodes.IsEmpty() {
-		return ""
+func (np *NodePool) updateHashRing(nodes []string) {
+	np.rwMut.Lock()
+	defer np.rwMut.Unlock()
+	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
+	for _, v := range nodes {
+		np.nodes.Add(v)
 	}
-	return np.nodes.Get(jobName)
 }
