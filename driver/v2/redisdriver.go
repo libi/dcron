@@ -2,9 +2,10 @@ package v2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
-	"sort"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -18,78 +19,82 @@ type RedisDriver struct {
 	nodeID      string
 	timeout     time.Duration
 	logger      dlog.Logger
-	nodesChan   chan []string
-	prevNodes   []string
+	started     bool
+	stopChan    chan interface{}
+
+	sync.Mutex
 }
 
 func NewRedisDriver(redisClient *redis.Client) driver.DriverV2 {
-	return &RedisDriver{
+	rd := &RedisDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{
 			Log: log.Default(),
 		},
-		nodesChan: make(chan []string, DefaultNodesChanLength),
-		prevNodes: make([]string, 0),
 	}
+	rd.started = false
+	return rd
 }
 
-func (rd *RedisDriver) Init(serviceName string, timeout time.Duration, logger dlog.Logger) string {
+func (rd *RedisDriver) Init(serviceName string, timeout time.Duration, logger dlog.Logger) {
 	rd.serviceName = serviceName
 	rd.timeout = timeout
 	if logger != nil {
 		rd.logger = logger
 	}
 	rd.nodeID = GetNodeId(rd.serviceName)
+}
+
+func (rd *RedisDriver) NodeID() string {
 	return rd.nodeID
 }
 
-func (rd *RedisDriver) Start() (nodesChan chan []string, err error) {
+func (rd *RedisDriver) Start() (err error) {
+	rd.Lock()
+	defer rd.Unlock()
+	if rd.started {
+		err = errors.New("this driver is started")
+		return
+	}
+	rd.stopChan = make(chan interface{}, 1)
+	rd.started = true
 	// register
 	err = rd.registerServiceNode()
+	if err != nil {
+		return
+	}
 	// heartbeat timer
 	go rd.heartBeat()
-	// update service nodes
-	rd.updateNodes()
-	// go update timer.
-	go rd.updateNodesTimer()
-	return rd.nodesChan, err
+	return
+}
+
+func (rd *RedisDriver) Stop() (err error) {
+	rd.Lock()
+	defer rd.Unlock()
+	close(rd.stopChan)
+	return
+}
+
+func (rd *RedisDriver) GetNodes() (nodes []string, err error) {
+	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
+	return rd.scan(mathStr)
 }
 
 // private function
 
-func (rd *RedisDriver) updateNodesTimer() {
-	tick := time.NewTicker(rd.timeout / 2)
-	for range tick.C {
-		rd.updateNodes()
-	}
-}
-
-func (rd *RedisDriver) updateNodes() {
-	nowNodes, err := rd.getServiceNodeList()
-	if err != nil {
-		rd.logger.Errorf("get service node list err, err=%v", err)
-		return
-	}
-	sort.Strings(nowNodes)
-	if EqualStringSlice(rd.prevNodes, nowNodes) {
-		return
-	}
-	rd.prevNodes = nowNodes
-	rd.nodesChan <- rd.prevNodes
-}
-
 func (rd *RedisDriver) heartBeat() {
 	tick := time.NewTicker(rd.timeout / 2)
-	for range tick.C {
-		keyExist, err := rd.c.Expire(context.Background(), rd.nodeID, rd.timeout).Result()
-		if err != nil {
-			rd.logger.Errorf("redis expire error %+v", err)
-			continue
-		}
-		if !keyExist {
+	for {
+		select {
+		case <-tick.C:
 			if err := rd.registerServiceNode(); err != nil {
 				rd.logger.Errorf("register service node error %+v", err)
 			}
+		case <-rd.stopChan:
+			if err := rd.c.Del(context.Background(), rd.nodeID, rd.nodeID).Err(); err != nil {
+				rd.logger.Errorf("unregister service node error %+v", err)
+			}
+			return
 		}
 	}
 }
@@ -110,9 +115,4 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 		ret = append(ret, iter.Val())
 	}
 	return ret, nil
-}
-
-func (rd *RedisDriver) getServiceNodeList() (nodesList []string, err error) {
-	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
-	return rd.scan(mathStr)
 }

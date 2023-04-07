@@ -21,16 +21,3 @@ func GetStableJobStore(serviceName string) string {
 func GetStableJobStoreTxKey(serviceName string) string {
 	return GetKeyPre(serviceName) + "TX:stable-jobs"
 }
-
-func EqualStringSlice(a []string, b []string) bool {
-	if len(a) == len(b) {
-		la := len(a)
-		for i := 0; i < la; i++ {
-			if a[i] != b[i] {
-				return false
-			}
-		}
-		return true
-	}
-	return false
-}

@@ -18,7 +18,12 @@ type Driver interface {
 }
 
 type DriverV2 interface {
-	// init driver, return nodeID
-	Init(serviceName string, timeout time.Duration, logger dlog.Logger) (nodeID string)
-	Start() (nodesChan chan []string, err error)
+	// init driver
+	Init(serviceName string, timeout time.Duration, logger dlog.Logger)
+	// get nodeID
+	NodeID() string
+	// get nodes
+	GetNodes() (nodes []string, err error)
+	Start() (err error)
+	Stop() (err error)
 }

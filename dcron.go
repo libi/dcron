@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultReplicas = 50
-	defaultDuration = time.Second
+	defaultDuration = 10 * time.Second
 )
 
 const (
@@ -196,5 +196,5 @@ func (d *Dcron) Stop() {
 			return
 		}
 	}
-	d.nodePool.Close()
+	d.nodePool.Stop()
 }

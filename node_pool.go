@@ -23,9 +23,9 @@ type NodePool struct {
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
 
-	logger    dlog.Logger
-	closeChan chan interface{}
-	nodesChan chan []string
+	logger   dlog.Logger
+	stopChan chan int
+	preNodes []string // sorted
 }
 
 func newNodePool(serviceName string, driver driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
@@ -41,12 +41,23 @@ func newNodePool(serviceName string, driver driver.DriverV2, updateDuration time
 	if logger != nil {
 		np.logger = logger
 	}
-	np.NodeID = np.driver.Init(serviceName, updateDuration, np.logger)
+	np.driver.Init(serviceName, updateDuration, np.logger)
 	return np
 }
 
 func (np *NodePool) StartPool() (err error) {
-	np.nodesChan, err = np.driver.Start()
+	err = np.driver.Start()
+	if err != nil {
+		np.logger.Errorf("start pool error: %v", err)
+		return
+	}
+	np.NodeID = np.driver.NodeID()
+	nowNodes, err := np.driver.GetNodes()
+	if err != nil {
+		np.logger.Errorf("get nodes error: %v", err)
+		return
+	}
+	np.updateHashRing(nowNodes)
 	go np.waitingForHashRing()
 	return
 }
@@ -68,17 +79,24 @@ func (np *NodePool) CheckJobAvailable(jobName string) bool {
 	return np.NodeID == targetNode
 }
 
-func (np *NodePool) Close() {
-	close(np.closeChan)
+func (np *NodePool) Stop() {
+	np.stopChan <- 1
+	np.driver.Stop()
+	np.preNodes = make([]string, 0)
 }
 
 func (np *NodePool) waitingForHashRing() {
+	tick := time.NewTicker(np.updateDuration)
 	for {
 		select {
-		case nowNodes := <-np.nodesChan:
-			np.logger.Infof("update hashRing nowNodes=%+v", nowNodes)
+		case <-tick.C:
+			nowNodes, err := np.driver.GetNodes()
+			if err != nil {
+				np.logger.Errorf("get nodes error %v", err)
+				continue
+			}
 			np.updateHashRing(nowNodes)
-		case <-np.closeChan:
+		case <-np.stopChan:
 			return
 		}
 	}
@@ -87,8 +105,26 @@ func (np *NodePool) waitingForHashRing() {
 func (np *NodePool) updateHashRing(nodes []string) {
 	np.rwMut.Lock()
 	defer np.rwMut.Unlock()
+	if np.equalRing(nodes) {
+		return
+	}
+	np.logger.Infof("update hashRing nodes=%+v", nodes)
+	np.preNodes = nodes
 	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
 	for _, v := range nodes {
 		np.nodes.Add(v)
 	}
+}
+
+func (np *NodePool) equalRing(a []string) bool {
+	if len(a) == len(np.preNodes) {
+		la := len(a)
+		for i := 0; i < la; i++ {
+			if a[i] != np.preNodes[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }

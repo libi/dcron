@@ -12,6 +12,11 @@ import (
 	"github.com/libi/dcron/dlog"
 	v2 "github.com/libi/dcron/driver/v2"
 	"github.com/robfig/cron/v3"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	DefaultRedisAddr = "127.0.0.1:6379"
 )
 
 type TestJob1 struct {
@@ -24,95 +29,19 @@ func (t TestJob1) Run() {
 
 var testData = make(map[string]struct{})
 
-func Test(t *testing.T) {
+func TestMultiNodes(t *testing.T) {
 	go runNode(t)
 	// 间隔1秒启动测试节点刷新逻辑
 	time.Sleep(time.Second)
 	go runNode(t)
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second)
 	go runNode(t)
-
-	//add recover
-	redisCli2 := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
-	})
-	drv2 := v2.NewRedisDriver(redisCli2)
-	dcron2 := dcron.NewDcron("server2", drv2, cron.WithChain(cron.Recover(cron.DefaultLogger)))
-	dcron2.Start()
-	dcron2.Stop()
-
-	var err error
-	//panic recover test
-	err = dcron2.AddFunc("s2 test1", "* * * * *", func() {
-		panic("panic test")
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	err = dcron2.AddFunc("s2 test2", "* * * * *", func() {
-		t.Log("执行 service2 test2 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	err = dcron2.AddFunc("s2 test3", "* * * * *", func() {
-		t.Log("执行 service2 test3 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	dcron2.Start()
-
-	// set logger
-	logger := &dlog.StdLogger{
-		Log: log.New(os.Stdout, "[test_s3]", log.LstdFlags),
-	}
-	// wrap cron recover
-	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
-
-	// option test
-	redisCli3 := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
-	})
-	drv3 := v2.NewRedisDriver(redisCli3)
-	dcron3 := dcron.NewDcronWithOption("server3", drv3, rec,
-		dcron.WithLogger(logger),
-		dcron.WithHashReplicas(10),
-		dcron.WithNodeUpdateDuration(time.Second*10))
-
-	//panic recover test
-	err = dcron3.AddFunc("s3 test1", "* * * * *", func() {
-		t.Log("执行 server3 test1 任务,模拟 panic", time.Now().Format("15:04:05"))
-		panic("panic test")
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-
-	err = dcron3.AddFunc("s3 test2", "* * * * *", func() {
-		t.Log("执行 server3 test2 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	err = dcron3.AddFunc("s3 test3", "* * * * *", func() {
-		t.Log("执行 server3 test3 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	dcron3.Start()
-
-	//测试120秒后退出
 	time.Sleep(120 * time.Second)
-	t.Log("testData", testData)
-	dcron2.Stop()
-	dcron3.Stop()
 }
 
 func runNode(t *testing.T) {
 	redisCli := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
+		Addr: DefaultRedisAddr,
 	})
 	drv := v2.NewRedisDriver(redisCli)
 	dcron := dcron.NewDcron("server1", drv)
@@ -156,7 +85,7 @@ func runNode(t *testing.T) {
 
 func Test_SecondsJob(t *testing.T) {
 	redisCli := redis.NewClient(&redis.Options{
-		Addr: "127.0.0.1:6379",
+		Addr: DefaultRedisAddr,
 	})
 	drv := v2.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
@@ -169,4 +98,43 @@ func Test_SecondsJob(t *testing.T) {
 	dcr.Start()
 	time.Sleep(15 * time.Second)
 	dcr.Stop()
+}
+
+func runSecondNode(id string, t *testing.T) {
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: DefaultRedisAddr,
+	})
+	drv := v2.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(t.Name(), drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(&dlog.StdLogger{
+			Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
+		}),
+		dcron.CronOptionChain(cron.Recover(
+			cron.DefaultLogger,
+		)),
+	)
+	var err error
+	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+		t.Log(time.Now())
+	})
+	require.Nil(t, err)
+	err = dcr.AddFunc("job2", "*/8 * * * * *", func() {
+		panic("test panic")
+	})
+	require.Nil(t, err)
+	err = dcr.AddFunc("job3", "*/2 * * * * *", func() {
+		t.Log("job3:", time.Now())
+	})
+	require.Nil(t, err)
+	dcr.Start()
+}
+
+func Test_SecondJobWithPanicAndMultiNodes(t *testing.T) {
+	go runSecondNode("1", t)
+	go runSecondNode("2", t)
+	go runSecondNode("3", t)
+	go runSecondNode("4", t)
+	go runSecondNode("5", t)
+	time.Sleep(45 * time.Second)
 }
