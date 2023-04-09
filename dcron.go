@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultReplicas = 50
-	defaultDuration = 10 * time.Second
+	defaultDuration = 3 * time.Second
 )
 
 const (
@@ -189,6 +189,7 @@ func (d *Dcron) startNodePool() error {
 // Stop job
 func (d *Dcron) Stop() {
 	tick := time.NewTicker(time.Millisecond)
+	d.nodePool.Stop()
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
 			d.cr.Stop()
@@ -196,5 +197,4 @@ func (d *Dcron) Stop() {
 			return
 		}
 	}
-	d.nodePool.Stop()
 }

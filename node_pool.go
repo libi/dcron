@@ -37,6 +37,7 @@ func newNodePool(serviceName string, driver driver.DriverV2, updateDuration time
 		logger: &dlog.StdLogger{
 			Log: log.Default(),
 		},
+		stopChan: make(chan int, 1),
 	}
 	if logger != nil {
 		np.logger = logger
@@ -106,10 +107,12 @@ func (np *NodePool) updateHashRing(nodes []string) {
 	np.rwMut.Lock()
 	defer np.rwMut.Unlock()
 	if np.equalRing(nodes) {
+		np.logger.Infof("nowNodes=%v, preNodes=%v", nodes, np.preNodes)
 		return
 	}
 	np.logger.Infof("update hashRing nodes=%+v", nodes)
-	np.preNodes = nodes
+	np.preNodes = make([]string, len(nodes))
+	copy(np.preNodes, nodes)
 	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
 	for _, v := range nodes {
 		np.nodes.Add(v)

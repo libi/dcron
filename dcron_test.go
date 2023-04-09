@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -100,7 +101,7 @@ func Test_SecondsJob(t *testing.T) {
 	dcr.Stop()
 }
 
-func runSecondNode(id string, t *testing.T) {
+func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T) {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: DefaultRedisAddr,
 	})
@@ -128,13 +129,26 @@ func runSecondNode(id string, t *testing.T) {
 	})
 	require.Nil(t, err)
 	dcr.Start()
+	<-time.After(runningTime)
+	dcr.Stop()
+	wg.Done()
 }
 
 func Test_SecondJobWithPanicAndMultiNodes(t *testing.T) {
-	go runSecondNode("1", t)
-	go runSecondNode("2", t)
-	go runSecondNode("3", t)
-	go runSecondNode("4", t)
-	go runSecondNode("5", t)
-	time.Sleep(45 * time.Second)
+	wg := &sync.WaitGroup{}
+	wg.Add(5)
+	go runSecondNode("1", wg, 45*time.Second, t)
+	go runSecondNode("2", wg, 45*time.Second, t)
+	go runSecondNode("3", wg, 45*time.Second, t)
+	go runSecondNode("4", wg, 45*time.Second, t)
+	go runSecondNode("5", wg, 45*time.Second, t)
+	wg.Wait()
+}
+
+func Test_SecondJobWithStopAndSwapNode(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go runSecondNode("1", wg, 60*time.Second, t)
+	go runSecondNode("2", wg, 20*time.Second, t)
+	wg.Wait()
 }
