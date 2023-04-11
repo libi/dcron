@@ -3,7 +3,9 @@ package driver
 import (
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
+	v2 "github.com/libi/dcron/driver/v2"
 )
 
 //Driver is a driver interface
@@ -26,4 +28,8 @@ type DriverV2 interface {
 	GetNodes() (nodes []string, err error)
 	Start() (err error)
 	Stop() (err error)
+}
+
+func NewRedisDriver(redisClient *redis.Client) DriverV2 {
+	return v2.NewRedisDriver(redisClient)
 }

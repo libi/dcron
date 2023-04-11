@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
 )
 
 type RedisDriver struct {
@@ -25,7 +24,7 @@ type RedisDriver struct {
 	sync.Mutex
 }
 
-func NewRedisDriver(redisClient *redis.Client) driver.DriverV2 {
+func NewRedisDriver(redisClient *redis.Client) *RedisDriver {
 	rd := &RedisDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{
