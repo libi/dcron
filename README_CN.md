@@ -38,6 +38,8 @@ redisCli := redis.NewClient(&redis.Options{
 drv := driver.NewRedisDriver(redisCli)
 dcron := NewDcron("server1", drv)
 ```
+当然，如果你可以自己实现一个自定义的Driver也是可以的，只需要实现[DriverV2](driver/driver.go)接口即可。
+
 2.使用cron语法添加任务，需要指定任务名。任务名作为任务的唯一标识，必须保证唯一。
 ```golang
 dcron.AddFunc("test1","*/3 * * * *",func(){
