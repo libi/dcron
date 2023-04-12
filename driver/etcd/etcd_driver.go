@@ -8,12 +8,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
-
-var _ driver.Driver = &EtcdDriver{}
 
 const (
 	defaultLease    = 5 // 5 second ttl
