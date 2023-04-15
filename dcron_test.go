@@ -11,7 +11,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
-	v2 "github.com/libi/dcron/driver/v2"
+	"github.com/libi/dcron/driver"
 	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func runNode(t *testing.T) {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: DefaultRedisAddr,
 	})
-	drv := v2.NewRedisDriver(redisCli)
+	drv := driver.NewRedisDriver(redisCli)
 	dcron := dcron.NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
@@ -88,7 +88,7 @@ func Test_SecondsJob(t *testing.T) {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: DefaultRedisAddr,
 	})
-	drv := v2.NewRedisDriver(redisCli)
+	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
 	err := dcr.AddFunc("job1", "*/5 * * * * *", func() {
 		t.Log(time.Now())
@@ -105,7 +105,7 @@ func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: DefaultRedisAddr,
 	})
-	drv := v2.NewRedisDriver(redisCli)
+	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv,
 		dcron.CronOptionSeconds(),
 		dcron.WithLogger(&dlog.StdLogger{

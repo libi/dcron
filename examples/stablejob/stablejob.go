@@ -9,7 +9,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
-	v2 "github.com/libi/dcron/driver/v2"
+	"github.com/libi/dcron/driver"
 	examplesCommon "github.com/libi/dcron/examples/common"
 )
 
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	redisCli := redis.NewClient(redisOpts)
-	drv := v2.NewRedisDriver(redisCli)
+	drv := driver.NewRedisDriver(redisCli)
 	dcronInstance := dcron.NewDcronWithOption(IEnv.ServerName, drv,
 		dcron.WithLogger(&dlog.StdLogger{
 			Log: logger,

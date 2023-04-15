@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
-	v2 "github.com/libi/dcron/driver/v2"
+	"github.com/libi/dcron/driver"
 )
 
 const (
@@ -62,7 +62,7 @@ func main() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: *addr,
 	})
-	driver := v2.NewRedisDriver(redisCli)
+	driver := driver.NewRedisDriver(redisCli)
 	logger := &dlog.StdLogger{
 		Log: log.New(os.Stdout, "["+*subId+"]", log.LstdFlags),
 	}
