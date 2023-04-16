@@ -60,6 +60,7 @@ func (rd *RedisDriver) Start() (err error) {
 	// register
 	err = rd.registerServiceNode()
 	if err != nil {
+		rd.logger.Errorf("register service error=%v", err)
 		return
 	}
 	// heartbeat timer
@@ -71,6 +72,7 @@ func (rd *RedisDriver) Stop() (err error) {
 	rd.Lock()
 	defer rd.Unlock()
 	close(rd.stopChan)
+	rd.started = false
 	return
 }
 
@@ -86,14 +88,18 @@ func (rd *RedisDriver) heartBeat() {
 	for {
 		select {
 		case <-tick.C:
-			if err := rd.registerServiceNode(); err != nil {
-				rd.logger.Errorf("register service node error %+v", err)
+			{
+				if err := rd.registerServiceNode(); err != nil {
+					rd.logger.Errorf("register service node error %+v", err)
+				}
 			}
 		case <-rd.stopChan:
-			if err := rd.c.Del(context.Background(), rd.nodeID, rd.nodeID).Err(); err != nil {
-				rd.logger.Errorf("unregister service node error %+v", err)
+			{
+				if err := rd.c.Del(context.Background(), rd.nodeID, rd.nodeID).Err(); err != nil {
+					rd.logger.Errorf("unregister service node error %+v", err)
+				}
+				return
 			}
-			return
 		}
 	}
 }
