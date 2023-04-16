@@ -164,6 +164,12 @@ label:
 				e.logger.Errorf("ectd cli keepalive timeout")
 				return
 			}
+		case <-time.After(time.Duration(e.lease/2) * (time.Second)):
+			{
+				// if near to nodes time,
+				// renew the lease
+				goto label
+			}
 		}
 	}
 }
