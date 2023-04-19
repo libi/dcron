@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.8.1
-	go.etcd.io/etcd/api/v3 v3.5.8
-	go.etcd.io/etcd/client/v3 v3.5.8
-	go.etcd.io/etcd/tests/v3 v3.5.8
+	go.etcd.io/etcd/api/v3 v3.5.4
+	go.etcd.io/etcd/client/v3 v3.5.4
+	go.etcd.io/etcd/tests/v3 v3.5.4
 )
