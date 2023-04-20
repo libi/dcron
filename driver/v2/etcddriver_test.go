@@ -45,3 +45,51 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 		v.Stop()
 	}
 }
+
+func TestEtcdDriver_Stop(t *testing.T) {
+	var err error
+	var nodes []string
+	etcdsvr := integration.NewLazyCluster()
+	defer etcdsvr.Terminate()
+
+	drv1 := testFuncNewEtcdDriver(clientv3.Config{
+		Endpoints:   etcdsvr.EndpointsV3(),
+		DialTimeout: 3 * time.Second,
+	})
+	drv1.Init(t.Name(), 5*time.Second, nil)
+
+	drv2 := testFuncNewEtcdDriver(clientv3.Config{
+		Endpoints:   etcdsvr.EndpointsV3(),
+		DialTimeout: 3 * time.Second,
+	})
+	drv2.Init(t.Name(), 5*time.Second, nil)
+	err = drv2.Start()
+	require.Nil(t, err)
+
+	err = drv1.Start()
+	require.Nil(t, err)
+	<-time.After(3 * time.Second)
+	nodes, err = drv1.GetNodes()
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
+
+	nodes, err = drv2.GetNodes()
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
+
+	drv1.Stop()
+
+	<-time.After(5 * time.Second)
+	nodes, err = drv2.GetNodes()
+	require.Nil(t, err)
+	require.Len(t, nodes, 1)
+
+	err = drv1.Start()
+	require.Nil(t, err)
+	<-time.After(5 * time.Second)
+	nodes, err = drv2.GetNodes()
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
+
+	drv2.Stop()
+}
