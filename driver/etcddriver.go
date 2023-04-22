@@ -1,4 +1,4 @@
-package v2
+package driver
 
 import (
 	"context"
@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	defaultLease    = 5 // min lease time
-	dialTimeout     = 3 * time.Second
-	businessTimeout = 5 * time.Second
+	etcdDefaultLease    = 5 // min lease time
+	etcdDialTimeout     = 3 * time.Second
+	etcdBusinessTimeout = 5 * time.Second
 )
 
 type EtcdDriver struct {
@@ -31,7 +31,7 @@ type EtcdDriver struct {
 }
 
 //NewEtcdDriver
-func NewEtcdDriver(cli *clientv3.Client) *EtcdDriver {
+func newEtcdDriver(cli *clientv3.Client) *EtcdDriver {
 	ser := &EtcdDriver{
 		cli:   cli,
 		nodes: &sync.Map{},
@@ -46,11 +46,11 @@ func NewEtcdDriver(cli *clientv3.Client) *EtcdDriver {
 //设置key value，绑定租约
 func (e *EtcdDriver) putKeyWithLease(key, val string) (clientv3.LeaseID, error) {
 	//设置租约时间，最少5s
-	if e.lease < defaultLease {
-		e.lease = defaultLease
+	if e.lease < etcdDefaultLease {
+		e.lease = etcdDefaultLease
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), businessTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), etcdBusinessTimeout)
 	defer cancel()
 	resp, err := e.cli.Grant(ctx, e.lease)
 	if err != nil {
@@ -159,7 +159,7 @@ label:
 					goto label
 				}
 			}
-		case <-time.After(businessTimeout):
+		case <-time.After(etcdBusinessTimeout):
 			{
 				e.logger.Errorf("ectd cli keepalive timeout")
 				return
@@ -174,13 +174,9 @@ label:
 	}
 }
 
-func (e *EtcdDriver) Init(serverName string, timeout time.Duration, logger dlog.Logger) {
+func (e *EtcdDriver) Init(serverName string, opts ...Option) {
 	e.serviceName = serverName
 	e.nodeID = GetNodeId(serverName)
-	e.lease = int64(timeout.Seconds())
-	if logger != nil {
-		e.logger = logger
-	}
 }
 
 func (e *EtcdDriver) NodeID() string {
@@ -203,5 +199,19 @@ func (e *EtcdDriver) Start() (err error) {
 
 func (e *EtcdDriver) Stop() (err error) {
 	close(e.stopChan)
+	return
+}
+
+func (e *EtcdDriver) withOption(opt Option) (err error) {
+	switch opt.Type() {
+	case OptionTypeTimeout:
+		{
+			e.lease = int64(opt.(TimeoutOption).timeout.Seconds())
+		}
+	case OptionTypeLogger:
+		{
+			e.logger = opt.(LoggerOption).logger
+		}
+	}
 	return
 }

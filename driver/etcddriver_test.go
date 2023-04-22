@@ -1,11 +1,11 @@
-package v2_test
+package driver_test
 
 import (
 	"testing"
 	"time"
 
+	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
-	v2 "github.com/libi/dcron/driver/v2"
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
@@ -16,7 +16,7 @@ func testFuncNewEtcdDriver(cfg clientv3.Config) driver.DriverV2 {
 	if err != nil {
 		panic(err)
 	}
-	return v2.NewEtcdDriver(cli)
+	return driver.NewEtcdDriver(cli)
 }
 
 func TestEtcdDriver_GetNodes(t *testing.T) {
@@ -29,7 +29,7 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 			Endpoints:   etcdsvr.EndpointsV3(),
 			DialTimeout: 3 * time.Second,
 		})
-		drv.Init(t.Name(), 5*time.Second, nil)
+		drv.Init(t.Name(), driver.NewTimeoutOption(5*time.Second), driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 		err := drv.Start()
 		require.Nil(t, err)
 		drvs = append(drvs, drv)
@@ -56,13 +56,13 @@ func TestEtcdDriver_Stop(t *testing.T) {
 		Endpoints:   etcdsvr.EndpointsV3(),
 		DialTimeout: 3 * time.Second,
 	})
-	drv1.Init(t.Name(), 5*time.Second, nil)
+	drv1.Init(t.Name(), driver.NewTimeoutOption(5*time.Second), driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 
 	drv2 := testFuncNewEtcdDriver(clientv3.Config{
 		Endpoints:   etcdsvr.EndpointsV3(),
 		DialTimeout: 3 * time.Second,
 	})
-	drv2.Init(t.Name(), 5*time.Second, nil)
+	drv2.Init(t.Name(), driver.NewTimeoutOption(5*time.Second), driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 	err = drv2.Start()
 	require.Nil(t, err)
 

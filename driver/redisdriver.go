@@ -1,4 +1,4 @@
-package v2
+package driver
 
 import (
 	"context"
@@ -10,6 +10,10 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
+)
+
+const (
+	redisDefaultTimeout = 5 * time.Second
 )
 
 type RedisDriver struct {
@@ -24,24 +28,25 @@ type RedisDriver struct {
 	sync.Mutex
 }
 
-func NewRedisDriver(redisClient *redis.Client) *RedisDriver {
+func newRedisDriver(redisClient *redis.Client) *RedisDriver {
 	rd := &RedisDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{
 			Log: log.Default(),
 		},
+		timeout: redisDefaultTimeout,
 	}
 	rd.started = false
 	return rd
 }
 
-func (rd *RedisDriver) Init(serviceName string, timeout time.Duration, logger dlog.Logger) {
+func (rd *RedisDriver) Init(serviceName string, opts ...Option) {
 	rd.serviceName = serviceName
-	rd.timeout = timeout
-	if logger != nil {
-		rd.logger = logger
-	}
 	rd.nodeID = GetNodeId(rd.serviceName)
+
+	for _, opt := range opts {
+		rd.withOption(opt)
+	}
 }
 
 func (rd *RedisDriver) NodeID() string {
@@ -120,4 +125,18 @@ func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
 		ret = append(ret, iter.Val())
 	}
 	return ret, nil
+}
+
+func (rd *RedisDriver) withOption(opt Option) (err error) {
+	switch opt.Type() {
+	case OptionTypeTimeout:
+		{
+			rd.timeout = opt.(TimeoutOption).timeout
+		}
+	case OptionTypeLogger:
+		{
+			rd.logger = opt.(LoggerOption).logger
+		}
+	}
+	return
 }

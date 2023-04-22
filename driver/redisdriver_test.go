@@ -1,4 +1,4 @@
-package v2_test
+package driver_test
 
 import (
 	"log"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis/v8"
+	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +26,10 @@ func TestRedisDriver_GetNodes(t *testing.T) {
 	N := 10
 	for i := 0; i < N; i++ {
 		drv := testFuncNewRedisDriver(rds.Addr())
-		drv.Init(t.Name(), 5*time.Second, nil)
+		drv.Init(
+			t.Name(),
+			driver.NewTimeoutOption(5*time.Second),
+			driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 		err := drv.Start()
 		require.Nil(t, err)
 		drvs = append(drvs, drv)
@@ -47,10 +51,14 @@ func TestRedisDriver_Stop(t *testing.T) {
 	var nodes []string
 	rds := miniredis.RunT(t)
 	drv1 := testFuncNewRedisDriver(rds.Addr())
-	drv1.Init(t.Name(), 5*time.Second, nil)
+	drv1.Init(t.Name(),
+		driver.NewTimeoutOption(5*time.Second),
+		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 
 	drv2 := testFuncNewRedisDriver(rds.Addr())
-	drv2.Init(t.Name(), 5*time.Second, nil)
+	drv2.Init(t.Name(),
+		driver.NewTimeoutOption(5*time.Second),
+		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 	err = drv2.Start()
 	require.Nil(t, err)
 
