@@ -28,10 +28,10 @@ type NodePool struct {
 	preNodes []string // sorted
 }
 
-func newNodePool(serviceName string, driver driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
+func newNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
 	np := &NodePool{
 		serviceName:    serviceName,
-		driver:         driver,
+		driver:         drv,
 		hashReplicas:   hashReplicas,
 		updateDuration: updateDuration,
 		logger: &dlog.StdLogger{
@@ -42,7 +42,9 @@ func newNodePool(serviceName string, driver driver.DriverV2, updateDuration time
 	if logger != nil {
 		np.logger = logger
 	}
-	np.driver.Init(serviceName, updateDuration, np.logger)
+	np.driver.Init(serviceName,
+		driver.NewTimeoutOption(updateDuration),
+		driver.NewLoggerOption(np.logger))
 	return np
 }
 
