@@ -1,18 +1,31 @@
 package driver
 
 import (
-	"time"
-
-	"github.com/libi/dcron/dlog"
+	"github.com/go-redis/redis/v8"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-//Driver is a driver interface
-type Driver interface {
-	// Ping is check dirver is valid
-	Ping() error
-	SetLogger(log dlog.Logger)
-	SetHeartBeat(nodeID string)
-	SetTimeout(timeout time.Duration)
-	GetServiceNodeList(ServiceName string) ([]string, error)
-	RegisterServiceNode(ServiceName string) (string, error)
+// There is only one driver for one dcron.
+// Tips for write a user-defined Driver by yourself.
+//  1. Confirm that `Stop` and `Start` can be called for more times.
+//  2. Must make `GetNodes` will return error when timeout.
+type DriverV2 interface {
+	// init driver
+	Init(serviceName string, opts ...Option)
+	// get nodeID
+	NodeID() string
+	// get nodes
+	GetNodes() (nodes []string, err error)
+	Start() (err error)
+	Stop() (err error)
+
+	withOption(opt Option) (err error)
+}
+
+func NewRedisDriver(redisClient *redis.Client) DriverV2 {
+	return newRedisDriver(redisClient)
+}
+
+func NewEtcdDriver(etcdCli *clientv3.Client) DriverV2 {
+	return newEtcdDriver(etcdCli)
 }

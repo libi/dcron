@@ -1,11 +1,12 @@
 package dcron
 
 import (
+	"log"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/libi/dcron/consistenthash"
+	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 )
 
@@ -17,85 +18,118 @@ type NodePool struct {
 	rwMut sync.RWMutex
 	nodes *consistenthash.Map
 
-	Driver         driver.Driver
+	driver         driver.DriverV2
 	hashReplicas   int
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
 
-	dcron *Dcron
+	logger   dlog.Logger
+	stopChan chan int
+	preNodes []string // sorted
 }
 
-func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) (*NodePool, error) {
-
-	err := driver.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	nodePool := &NodePool{
-		Driver:         driver,
-		serviceName:    serverName,
-		dcron:          dcron,
+func newNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
+	np := &NodePool{
+		serviceName:    serviceName,
+		driver:         drv,
 		hashReplicas:   hashReplicas,
 		updateDuration: updateDuration,
+		logger: &dlog.StdLogger{
+			Log: log.Default(),
+		},
+		stopChan: make(chan int, 1),
 	}
-	return nodePool, nil
+	if logger != nil {
+		np.logger = logger
+	}
+	np.driver.Init(serviceName,
+		driver.NewTimeoutOption(updateDuration),
+		driver.NewLoggerOption(np.logger))
+	return np
 }
 
-// StartPool Start Service Watch Pool
-func (np *NodePool) StartPool() error {
-	var err error
-	np.Driver.SetTimeout(np.updateDuration)
-	np.NodeID, err = np.Driver.RegisterServiceNode(np.serviceName)
+func (np *NodePool) StartPool() (err error) {
+	err = np.driver.Start()
 	if err != nil {
-		return err
+		np.logger.Errorf("start pool error: %v", err)
+		return
 	}
-	np.Driver.SetHeartBeat(np.NodeID)
-
-	err = np.updatePool()
+	np.NodeID = np.driver.NodeID()
+	nowNodes, err := np.driver.GetNodes()
 	if err != nil {
-		return err
+		np.logger.Errorf("get nodes error: %v", err)
+		return
 	}
-
-	go np.tickerUpdatePool()
-	return nil
+	np.updateHashRing(nowNodes)
+	go np.waitingForHashRing()
+	return
 }
 
-func (np *NodePool) updatePool() error {
-	nodes, err := np.Driver.GetServiceNodeList(np.serviceName)
-	if err != nil {
-		return err
+// Check if this job can be run in this node.
+func (np *NodePool) CheckJobAvailable(jobName string) bool {
+	np.rwMut.RLock()
+	defer np.rwMut.RUnlock()
+	if np.nodes == nil {
+		np.logger.Errorf("nodeID=%s, np.nodes is nil", np.NodeID)
 	}
-
-	np.rwMut.Lock()
-	defer np.rwMut.Unlock()
-	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
-	for _, node := range nodes {
-		np.nodes.Add(node)
+	if np.nodes.IsEmpty() {
+		return false
 	}
-	return nil
+	targetNode := np.nodes.Get(jobName)
+	if np.NodeID == targetNode {
+		np.logger.Infof("job %s, running in node: %s", jobName, targetNode)
+	}
+	return np.NodeID == targetNode
 }
-func (np *NodePool) tickerUpdatePool() {
-	tickers := time.NewTicker(np.updateDuration)
-	for range tickers.C {
-		if atomic.LoadInt32(&np.dcron.running) == dcronRunning {
-			err := np.updatePool()
+
+func (np *NodePool) Stop() {
+	np.stopChan <- 1
+	np.driver.Stop()
+	np.preNodes = make([]string, 0)
+}
+
+func (np *NodePool) waitingForHashRing() {
+	tick := time.NewTicker(np.updateDuration)
+	for {
+		select {
+		case <-tick.C:
+			nowNodes, err := np.driver.GetNodes()
 			if err != nil {
-				np.dcron.logger.Infof("update node pool error %+v", err)
+				np.logger.Errorf("get nodes error %v", err)
+				continue
 			}
-		} else {
-			tickers.Stop()
+			np.updateHashRing(nowNodes)
+		case <-np.stopChan:
 			return
 		}
 	}
 }
 
-// PickNodeByJobName : 使用一致性hash算法根据任务名获取一个执行节点
-func (np *NodePool) PickNodeByJobName(jobName string) string {
-	np.rwMut.RLock()
-	defer np.rwMut.RUnlock()
-	if np.nodes.IsEmpty() {
-		return ""
+func (np *NodePool) updateHashRing(nodes []string) {
+	np.rwMut.Lock()
+	defer np.rwMut.Unlock()
+	if np.equalRing(nodes) {
+		np.logger.Infof("nowNodes=%v, preNodes=%v", nodes, np.preNodes)
+		return
 	}
-	return np.nodes.Get(jobName)
+	np.logger.Infof("update hashRing nodes=%+v", nodes)
+	np.preNodes = make([]string, len(nodes))
+	copy(np.preNodes, nodes)
+	np.nodes = consistenthash.New(np.hashReplicas, np.hashFn)
+	for _, v := range nodes {
+		np.nodes.Add(v)
+	}
+}
+
+func (np *NodePool) equalRing(a []string) bool {
+	if len(a) == len(np.preNodes) {
+		la := len(a)
+		for i := 0; i < la; i++ {
+			if a[i] != np.preNodes[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }

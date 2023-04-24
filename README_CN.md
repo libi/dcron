@@ -26,21 +26,25 @@ a lightweight distributed job scheduler  library based on redis or etcd
 - 故障转移：单个节点故障，10s后会自动将任务自动转移至其他正常节点。
 - 任务唯一：同一个服务内同一个任务只会启动单个运行实例，不会重复执行。
 - 自定义存储：通过实现driver接口来增加节点数据存储方式。
+- 自动恢复：如果进程重启，则**被持久化过的**任务会被自动加载
 
 ### 快速开始
 
 1.创建redisDriver实例，指定服务名并初始化dcron。服务名为执行相同任务的单元。
 ```golang
-  drv, _ := redis.NewDriver(&redis.Options{
-    Host: "127.0.0.1:6379"
-  })
-  dcron := NewDcron("server1", drv)
+redisCli := redis.NewClient(&redis.Options{
+  Addr: DefaultRedisAddr,
+})
+drv := driver.NewRedisDriver(redisCli)
+dcron := NewDcron("server1", drv)
 ```
+当然，如果你可以自己实现一个自定义的Driver也是可以的，只需要实现[DriverV2](driver/driver.go)接口即可。
+
 2.使用cron语法添加任务，需要指定任务名。任务名作为任务的唯一标识，必须保证唯一。
 ```golang
-    dcron.AddFunc("test1","*/3 * * * *",func(){
-		fmt.Println("执行 test1 任务",time.Now().Format("15:04:05"))
-	})
+dcron.AddFunc("test1","*/3 * * * *",func(){
+  fmt.Println("执行 test1 任务",time.Now().Format("15:04:05"))
+})
 ```
 3.开始任务。
 ```golang
@@ -53,7 +57,7 @@ dcron.Run()
 ```
 
 ### 使用案例
-[example](example/README.md)
+[examples](examples/)
 
 ### 更多配置
 

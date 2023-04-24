@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 
 const (
 	defaultReplicas = 50
-	defaultDuration = time.Second
+	defaultDuration = 3 * time.Second
 )
 
 const (
@@ -22,9 +23,13 @@ const (
 	dcronStopped = 0
 )
 
+type RecoverFuncType func(d *Dcron)
+
 // Dcron is main struct
 type Dcron struct {
-	jobs       map[string]*JobWarpper
+	jobs      map[string]*JobWarpper
+	jobsRWMut sync.Mutex
+
 	ServerName string
 	nodePool   *NodePool
 	running    int32
@@ -37,37 +42,29 @@ type Dcron struct {
 
 	cr        *cron.Cron
 	crOptions []cron.Option
+
+	RecoverFunc RecoverFuncType
 }
 
 // NewDcron create a Dcron
-func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Dcron {
+func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
 	dcron.running = dcronStopped
-	var err error
-	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
-	if err != nil {
-		dcron.logger.Errorf("ERR: %s", err.Error())
-		return nil
-	}
+	dcron.nodePool = newNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
 	return dcron
 }
 
 // NewDcronWithOption create a Dcron with Dcron Option
-func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Option) *Dcron {
+func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...Option) *Dcron {
 	dcron := newDcron(serverName)
 	for _, opt := range dcronOpts {
 		opt(dcron)
 	}
 
 	dcron.cr = cron.New(dcron.crOptions...)
-	var err error
-	dcron.nodePool, err = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
-	if err != nil {
-		dcron.logger.Errorf("ERR: %s", err.Error())
-		return nil
-	}
+	dcron.nodePool = newNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
 
 	return dcron
 }
@@ -106,6 +103,9 @@ func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 }
 func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
 	d.logger.Infof("addJob '%s' :  %s", jobName, cronStr)
+
+	d.jobsRWMut.Lock()
+	defer d.jobsRWMut.Unlock()
 	if _, ok := d.jobs[jobName]; ok {
 		return errors.New("jobName already exist")
 	}
@@ -122,12 +122,14 @@ func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error)
 	}
 	innerJob.ID = entryID
 	d.jobs[jobName] = &innerJob
-
 	return nil
 }
 
 // Remove Job
 func (d *Dcron) Remove(jobName string) {
+	d.jobsRWMut.Lock()
+	defer d.jobsRWMut.Unlock()
+
 	if job, ok := d.jobs[jobName]; ok {
 		delete(d.jobs, jobName)
 		d.cr.Remove(job.ID)
@@ -135,17 +137,16 @@ func (d *Dcron) Remove(jobName string) {
 }
 
 func (d *Dcron) allowThisNodeRun(jobName string) bool {
-	allowRunNode := d.nodePool.PickNodeByJobName(jobName)
-	d.logger.Infof("job '%s' running in node %s", jobName, allowRunNode)
-	if allowRunNode == "" {
-		d.logger.Errorf("node pool is empty")
-		return false
-	}
-	return d.nodePool.NodeID == allowRunNode
+	return d.nodePool.CheckJobAvailable(jobName)
 }
 
 // Start job
 func (d *Dcron) Start() {
+	// recover jobs before starting
+	if d.RecoverFunc != nil {
+		d.RecoverFunc(d)
+	}
+
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)
@@ -160,6 +161,10 @@ func (d *Dcron) Start() {
 
 // Run Job
 func (d *Dcron) Run() {
+	// recover jobs before starting
+	if d.RecoverFunc != nil {
+		d.RecoverFunc(d)
+	}
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)
@@ -184,6 +189,7 @@ func (d *Dcron) startNodePool() error {
 // Stop job
 func (d *Dcron) Stop() {
 	tick := time.NewTicker(time.Millisecond)
+	d.nodePool.Stop()
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
 			d.cr.Stop()

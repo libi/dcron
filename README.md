@@ -27,21 +27,23 @@ If use distributed-lock to implement it. I will depends on the system-time of ea
 - Failover: If a single node fails, the task will be automatically transferred to other normal nodes after 10 seconds. 
 - Unique: The same task in the same service will only start a single running instance, and will not be executed repeatedly. 
 - Customized storage: add the node storage mode by implementing the driver interface.
+- Automatic recovery: if the process restart, the jobs which **have been store** will be recovered into memory.
 
 ### Get Started
 
 1. Create redisDriver instance, set the `ServiceName` and initialize `dcron`. The `ServiceName` will defined the same task unit.
 ```golang
-  drv, _ := redis.NewDriver(&redis.Options{
-    Host: "127.0.0.1:6379"
-  })
-  dcron := NewDcron("server1", drv)
+redisCli := redis.NewClient(&redis.Options{
+  Addr: DefaultRedisAddr,
+})
+drv := driver.NewRedisDriver(redisCli)
+dcron := NewDcron("server1", drv)
 ```
 2. Use cron-language to add task, you should set the `TaskName`, the `TaskName` is the primary-key of each task.
 ```golang
-    dcron.AddFunc("test1","*/3 * * * *",func(){
-		fmt.Println("execute test1 task",time.Now().Format("15:04:05"))
-	})
+dcron.AddFunc("test1","*/3 * * * *",func(){
+  fmt.Println("execute test1 task",time.Now().Format("15:04:05"))
+})
 ```
 3. Begin the task
 ```golang
@@ -53,8 +55,8 @@ dcron.Start()
 dcron.Run()
 ```
 
-### Exmaple
-[example](example/README.md)
+### Example
+[examples](examples/)
 
 
 ### More configurations.
