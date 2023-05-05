@@ -53,7 +53,7 @@ func (rd *RedisDriver) NodeID() string {
 	return rd.nodeID
 }
 
-func (rd *RedisDriver) Start() (err error) {
+func (rd *RedisDriver) Start(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
 	if rd.started {
@@ -73,7 +73,7 @@ func (rd *RedisDriver) Start() (err error) {
 	return
 }
 
-func (rd *RedisDriver) Stop() (err error) {
+func (rd *RedisDriver) Stop(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
 	close(rd.stopChan)
@@ -81,7 +81,7 @@ func (rd *RedisDriver) Stop() (err error) {
 	return
 }
 
-func (rd *RedisDriver) GetNodes() (nodes []string, err error) {
+func (rd *RedisDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
 	return rd.scan(mathStr)
 }

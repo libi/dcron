@@ -183,11 +183,11 @@ func (e *EtcdDriver) NodeID() string {
 	return e.nodeID
 }
 
-func (e *EtcdDriver) GetNodes() (nodes []string, err error) {
+func (e *EtcdDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 	return e.getServices(), nil
 }
 
-func (e *EtcdDriver) Start() (err error) {
+func (e *EtcdDriver) Start(ctx context.Context) (err error) {
 	e.stopChan = make(chan int, 1)
 	go e.heartBeat()
 	err = e.watchService(e.serviceName)
@@ -197,7 +197,7 @@ func (e *EtcdDriver) Start() (err error) {
 	return nil
 }
 
-func (e *EtcdDriver) Stop() (err error) {
+func (e *EtcdDriver) Stop(ctx context.Context) (err error) {
 	close(e.stopChan)
 	return
 }

@@ -1,6 +1,7 @@
 package driver_test
 
 import (
+	"context"
 	"log"
 	"testing"
 	"time"
@@ -30,19 +31,19 @@ func TestRedisDriver_GetNodes(t *testing.T) {
 			t.Name(),
 			driver.NewTimeoutOption(5*time.Second),
 			driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
-		err := drv.Start()
+		err := drv.Start(context.Background())
 		require.Nil(t, err)
 		drvs = append(drvs, drv)
 	}
 
 	for _, v := range drvs {
-		nodes, err := v.GetNodes()
+		nodes, err := v.GetNodes(context.Background())
 		require.Nil(t, err)
 		require.Equal(t, N, len(nodes))
 	}
 
 	for _, v := range drvs {
-		v.Stop()
+		v.Stop(context.Background())
 	}
 }
 
@@ -59,33 +60,33 @@ func TestRedisDriver_Stop(t *testing.T) {
 	drv2.Init(t.Name(),
 		driver.NewTimeoutOption(5*time.Second),
 		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
-	err = drv2.Start()
+	err = drv2.Start(context.Background())
 	require.Nil(t, err)
 
-	err = drv1.Start()
+	err = drv1.Start(context.Background())
 	require.Nil(t, err)
 
-	nodes, err = drv1.GetNodes()
-	require.Nil(t, err)
-	require.Len(t, nodes, 2)
-
-	nodes, err = drv2.GetNodes()
+	nodes, err = drv1.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 2)
 
-	drv1.Stop()
+	nodes, err = drv2.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
+
+	drv1.Stop(context.Background())
 
 	<-time.After(5 * time.Second)
-	nodes, err = drv2.GetNodes()
+	nodes, err = drv2.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 1)
 
-	err = drv1.Start()
+	err = drv1.Start(context.Background())
 	require.Nil(t, err)
 	<-time.After(5 * time.Second)
-	nodes, err = drv2.GetNodes()
+	nodes, err = drv2.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 2)
 
-	drv2.Stop()
+	drv2.Stop(context.Background())
 }

@@ -1,6 +1,7 @@
 package dcron
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -49,13 +50,13 @@ func newNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Du
 }
 
 func (np *NodePool) StartPool() (err error) {
-	err = np.driver.Start()
+	err = np.driver.Start(context.Background())
 	if err != nil {
 		np.logger.Errorf("start pool error: %v", err)
 		return
 	}
 	np.NodeID = np.driver.NodeID()
-	nowNodes, err := np.driver.GetNodes()
+	nowNodes, err := np.driver.GetNodes(context.Background())
 	if err != nil {
 		np.logger.Errorf("get nodes error: %v", err)
 		return
@@ -84,7 +85,7 @@ func (np *NodePool) CheckJobAvailable(jobName string) bool {
 
 func (np *NodePool) Stop() {
 	np.stopChan <- 1
-	np.driver.Stop()
+	np.driver.Stop(context.Background())
 	np.preNodes = make([]string, 0)
 }
 
@@ -93,7 +94,7 @@ func (np *NodePool) waitingForHashRing() {
 	for {
 		select {
 		case <-tick.C:
-			nowNodes, err := np.driver.GetNodes()
+			nowNodes, err := np.driver.GetNodes(context.Background())
 			if err != nil {
 				np.logger.Errorf("get nodes error %v", err)
 				continue

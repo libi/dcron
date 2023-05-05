@@ -1,6 +1,8 @@
 package driver
 
 import (
+	"context"
+
 	"github.com/go-redis/redis/v8"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -15,9 +17,9 @@ type DriverV2 interface {
 	// get nodeID
 	NodeID() string
 	// get nodes
-	GetNodes() (nodes []string, err error)
-	Start() (err error)
-	Stop() (err error)
+	GetNodes(ctx context.Context) (nodes []string, err error)
+	Start(ctx context.Context) (err error)
+	Stop(ctx context.Context) (err error)
 
 	withOption(opt Option) (err error)
 }
