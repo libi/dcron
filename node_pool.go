@@ -29,7 +29,7 @@ type NodePool struct {
 	preNodes []string // sorted
 }
 
-func newNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
+func NewNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
 	np := &NodePool{
 		serviceName:    serviceName,
 		driver:         drv,

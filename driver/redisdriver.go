@@ -83,7 +83,7 @@ func (rd *RedisDriver) Stop(ctx context.Context) (err error) {
 
 func (rd *RedisDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
-	return rd.scan(mathStr)
+	return rd.scan(ctx, mathStr)
 }
 
 // private function
@@ -113,9 +113,8 @@ func (rd *RedisDriver) registerServiceNode() error {
 	return rd.c.SetEX(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
 }
 
-func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
+func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, error) {
 	ret := make([]string, 0)
-	ctx := context.Background()
 	iter := rd.c.Scan(ctx, 0, matchStr, -1).Iterator()
 	for iter.Next(ctx) {
 		err := iter.Err()
