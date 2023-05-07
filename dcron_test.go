@@ -31,16 +31,20 @@ func (t TestJob1) Run() {
 var testData = make(map[string]struct{})
 
 func TestMultiNodes(t *testing.T) {
-	go runNode(t)
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
+
+	go runNode(t, wg)
 	// 间隔1秒启动测试节点刷新逻辑
 	time.Sleep(time.Second)
-	go runNode(t)
+	go runNode(t, wg)
 	time.Sleep(time.Second)
-	go runNode(t)
-	time.Sleep(120 * time.Second)
+	go runNode(t, wg)
+
+	wg.Wait()
 }
 
-func runNode(t *testing.T) {
+func runNode(t *testing.T, wg *sync.WaitGroup) {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: DefaultRedisAddr,
 	})
@@ -82,6 +86,9 @@ func runNode(t *testing.T) {
 
 	//移除测试
 	dcron.Remove("s1 test3")
+	<-time.After(120 * time.Second)
+	wg.Done()
+	dcron.Stop()
 }
 
 func Test_SecondsJob(t *testing.T) {
