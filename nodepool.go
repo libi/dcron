@@ -14,7 +14,7 @@ import (
 // NodePool is a node pool
 type NodePool struct {
 	serviceName string
-	NodeID      string
+	nodeID      string
 
 	rwMut sync.RWMutex
 	nodes *consistenthash.Map
@@ -29,7 +29,7 @@ type NodePool struct {
 	preNodes []string // sorted
 }
 
-func NewNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) *NodePool {
+func NewNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) INodePool {
 	np := &NodePool{
 		serviceName:    serviceName,
 		driver:         drv,
@@ -49,14 +49,14 @@ func NewNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Du
 	return np
 }
 
-func (np *NodePool) StartPool() (err error) {
-	err = np.driver.Start(context.Background())
+func (np *NodePool) Start(ctx context.Context) (err error) {
+	err = np.driver.Start(ctx)
 	if err != nil {
 		np.logger.Errorf("start pool error: %v", err)
 		return
 	}
-	np.NodeID = np.driver.NodeID()
-	nowNodes, err := np.driver.GetNodes(context.Background())
+	np.nodeID = np.driver.NodeID()
+	nowNodes, err := np.driver.GetNodes(ctx)
 	if err != nil {
 		np.logger.Errorf("get nodes error: %v", err)
 		return
@@ -71,22 +71,27 @@ func (np *NodePool) CheckJobAvailable(jobName string) bool {
 	np.rwMut.RLock()
 	defer np.rwMut.RUnlock()
 	if np.nodes == nil {
-		np.logger.Errorf("nodeID=%s, np.nodes is nil", np.NodeID)
+		np.logger.Errorf("nodeID=%s, np.nodes is nil", np.nodeID)
 	}
 	if np.nodes.IsEmpty() {
 		return false
 	}
 	targetNode := np.nodes.Get(jobName)
-	if np.NodeID == targetNode {
+	if np.nodeID == targetNode {
 		np.logger.Infof("job %s, running in node: %s", jobName, targetNode)
 	}
-	return np.NodeID == targetNode
+	return np.nodeID == targetNode
 }
 
-func (np *NodePool) Stop() {
+func (np *NodePool) Stop(ctx context.Context) error {
 	np.stopChan <- 1
-	np.driver.Stop(context.Background())
+	np.driver.Stop(ctx)
 	np.preNodes = make([]string, 0)
+	return nil
+}
+
+func (np *NodePool) GetNodeID() string {
+	return np.nodeID
 }
 
 func (np *NodePool) waitingForHashRing() {
