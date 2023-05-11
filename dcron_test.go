@@ -64,6 +64,11 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal("add func error")
 	}
+	err = dcron2.AddCmd("s2 test4", "** * * * *", []string{"pwd", "echo hello dcron"})
+	if err != nil {
+		t.Fatal("add cmd error")
+	}
+
 	dcron2.Start()
 
 	// set logger
