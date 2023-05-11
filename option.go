@@ -42,7 +42,7 @@ func WithHashReplicas(d int) Option {
 	}
 }
 
-//CronOptionLocation is warp cron with location
+// CronOptionLocation is warp cron with location
 func CronOptionLocation(loc *time.Location) Option {
 	return func(dcron *Dcron) {
 		f := cron.WithLocation(loc)
@@ -50,7 +50,7 @@ func CronOptionLocation(loc *time.Location) Option {
 	}
 }
 
-//CronOptionSeconds is warp cron with seconds
+// CronOptionSeconds is warp cron with seconds
 func CronOptionSeconds() Option {
 	return func(dcron *Dcron) {
 		f := cron.WithSeconds()
@@ -79,5 +79,12 @@ func CronOptionChain(wrappers ...cron.JobWrapper) Option {
 func WithRecoverFunc(recoverFunc RecoverFuncType) Option {
 	return func(dcron *Dcron) {
 		dcron.RecoverFunc = recoverFunc
+	}
+}
+
+// WithJobTimeout set job timemout
+func WithJobTimeout(d time.Duration) Option {
+	return func(dcron *Dcron) {
+		dcron.jobTimeout = d
 	}
 }
