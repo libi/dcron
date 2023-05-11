@@ -81,10 +81,3 @@ func WithRecoverFunc(recoverFunc RecoverFuncType) Option {
 		dcron.RecoverFunc = recoverFunc
 	}
 }
-
-// WithJobTimeout set job timemout
-func WithJobTimeout(d time.Duration) Option {
-	return func(dcron *Dcron) {
-		dcron.jobTimeout = d
-	}
-}

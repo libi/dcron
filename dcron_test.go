@@ -64,7 +64,7 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal("add func error")
 	}
-	err = dcron2.AddCmd("s2 test4", "** * * * *", []string{"pwd", "echo hello dcron"})
+	err = dcron2.AddCmd("s2 test4", "* * * * *", []string{"pwd", "echo hello dcron"}, time.Second*10)
 	if err != nil {
 		t.Fatal("add cmd error")
 	}
