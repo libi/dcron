@@ -114,8 +114,8 @@ func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 }
 
 // AddCmd add a bash shell
-func (d *Dcron) AddCmd(jobName, cronStr string, cmds []string, execTimeout time.Duration) (err error) {
-	cmdJob := special_jobs.BashJob{Cmds: cmds, Timeout: execTimeout, Logger: d.logger}
+func (d *Dcron) AddCmd(jobName, cronStr string, cmd string, execTimeout time.Duration, outputCall func([]byte, error)) (err error) {
+	cmdJob := special_jobs.BashJob{Cmd: cmd, Timeout: execTimeout, OutputCall: outputCall}
 	return d.addJob(jobName, cronStr, nil, cmdJob)
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -64,10 +65,15 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal("add func error")
 	}
-	err = dcron2.AddCmd("s2 test4", "* * * * *", []string{"pwd", "echo hello dcron"}, time.Second*10)
-	if err != nil {
-		t.Fatal("add cmd error")
-	}
+	err = dcron2.AddCmd("s2 test4", "* * * * *", "echo hello dcron", time.Second*10, func(output []byte, err error) {
+		if err != nil {
+			t.Fatal("add cmd error")
+		}
+		t.Logf("s2 test4 output: %s", output)
+		if !strings.Contains(string(output), "hello dcron") {
+			t.Errorf("echo hello dcron output [%s] not expected", output)
+		}
+	})
 
 	dcron2.Start()
 
