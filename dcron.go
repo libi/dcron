@@ -1,6 +1,7 @@
 package dcron
 
 import (
+	"context"
 	"errors"
 	"log"
 	"os"
@@ -31,7 +32,7 @@ type Dcron struct {
 	jobsRWMut sync.Mutex
 
 	ServerName string
-	nodePool   *NodePool
+	nodePool   INodePool
 	running    int32
 
 	logger  dlog.Logger
@@ -52,7 +53,7 @@ func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
 	dcron.running = dcronStopped
-	dcron.nodePool = newNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
+	dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
 	return dcron
 }
 
@@ -64,7 +65,7 @@ func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...
 	}
 
 	dcron.cr = cron.New(dcron.crOptions...)
-	dcron.nodePool = newNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
+	dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
 
 	return dcron
 }
@@ -102,7 +103,7 @@ func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 	return d.addJob(jobName, cronStr, cmd, nil)
 }
 func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
-	d.logger.Infof("addJob '%s' :  %s", jobName, cronStr)
+	d.logger.Infof("addJob '%s' : %s", jobName, cronStr)
 
 	d.jobsRWMut.Lock()
 	defer d.jobsRWMut.Unlock()
@@ -153,7 +154,7 @@ func (d *Dcron) Start() {
 			return
 		}
 		d.cr.Start()
-		d.logger.Infof("dcron started , nodeID is %s", d.nodePool.NodeID)
+		d.logger.Infof("dcron started , nodeID is %s", d.nodePool.GetNodeID())
 	} else {
 		d.logger.Infof("dcron have started")
 	}
@@ -171,7 +172,7 @@ func (d *Dcron) Run() {
 			return
 		}
 
-		d.logger.Infof("dcron running nodeID is %s", d.nodePool.NodeID)
+		d.logger.Infof("dcron running nodeID is %s", d.nodePool.GetNodeID())
 		d.cr.Run()
 	} else {
 		d.logger.Infof("dcron already running")
@@ -179,7 +180,7 @@ func (d *Dcron) Run() {
 }
 
 func (d *Dcron) startNodePool() error {
-	if err := d.nodePool.StartPool(); err != nil {
+	if err := d.nodePool.Start(context.Background()); err != nil {
 		d.logger.Errorf("dcron start node pool error %+v", err)
 		return err
 	}
@@ -189,7 +190,7 @@ func (d *Dcron) startNodePool() error {
 // Stop job
 func (d *Dcron) Stop() {
 	tick := time.NewTicker(time.Millisecond)
-	d.nodePool.Stop()
+	d.nodePool.Stop(context.Background())
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
 			d.cr.Stop()

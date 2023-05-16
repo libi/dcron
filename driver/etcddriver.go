@@ -27,10 +27,11 @@ type EtcdDriver struct {
 	leaseID clientv3.LeaseID
 	logger  dlog.Logger
 
-	stopChan chan int
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-//NewEtcdDriver
+// NewEtcdDriver
 func newEtcdDriver(cli *clientv3.Client) *EtcdDriver {
 	ser := &EtcdDriver{
 		cli:   cli,
@@ -43,21 +44,21 @@ func newEtcdDriver(cli *clientv3.Client) *EtcdDriver {
 	return ser
 }
 
-//设置key value，绑定租约
-func (e *EtcdDriver) putKeyWithLease(key, val string) (clientv3.LeaseID, error) {
+// 设置key value，绑定租约
+func (e *EtcdDriver) putKeyWithLease(ctx context.Context, key, val string) (clientv3.LeaseID, error) {
 	//设置租约时间，最少5s
 	if e.lease < etcdDefaultLease {
 		e.lease = etcdDefaultLease
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), etcdBusinessTimeout)
+	subCtx, cancel := context.WithTimeout(ctx, etcdBusinessTimeout)
 	defer cancel()
-	resp, err := e.cli.Grant(ctx, e.lease)
+	resp, err := e.cli.Grant(subCtx, e.lease)
 	if err != nil {
 		return 0, err
 	}
 	//注册服务并绑定租约
-	_, err = e.cli.Put(ctx, key, val, clientv3.WithLease(resp.ID))
+	_, err = e.cli.Put(subCtx, key, val, clientv3.WithLease(resp.ID))
 	if err != nil {
 		return 0, err
 	}
@@ -65,11 +66,11 @@ func (e *EtcdDriver) putKeyWithLease(key, val string) (clientv3.LeaseID, error) 
 	return resp.ID, nil
 }
 
-//WatchService 初始化服务列表和监视
-func (e *EtcdDriver) watchService(serviceName string) error {
+// WatchService 初始化服务列表和监视
+func (e *EtcdDriver) watchService(ctx context.Context, serviceName string) error {
 	prefix := GetKeyPre(serviceName)
 	// 根据前缀获取现有的key
-	resp, err := e.cli.Get(context.Background(), prefix, clientv3.WithPrefix())
+	resp, err := e.cli.Get(ctx, prefix, clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
@@ -121,7 +122,7 @@ func (e *EtcdDriver) getServices() []string {
 
 func (e *EtcdDriver) keepAlive(ctx context.Context, nodeID string) (<-chan *clientv3.LeaseKeepAliveResponse, error) {
 	var err error
-	e.leaseID, err = e.putKeyWithLease(nodeID, nodeID)
+	e.leaseID, err = e.putKeyWithLease(ctx, nodeID, nodeID)
 	if err != nil {
 		e.logger.Errorf("putKeyWithLease error: %v", err)
 		return nil, err
@@ -130,25 +131,24 @@ func (e *EtcdDriver) keepAlive(ctx context.Context, nodeID string) (<-chan *clie
 	return e.cli.KeepAlive(ctx, e.leaseID)
 }
 
-func (e *EtcdDriver) revoke() {
-	_, err := e.cli.Lease.Revoke(context.Background(), e.leaseID)
+func (e *EtcdDriver) revoke(ctx context.Context) {
+	_, err := e.cli.Lease.Revoke(ctx, e.leaseID)
 	if err != nil {
 		e.logger.Printf("lease revoke error: %v", err)
 	}
 }
 
-func (e *EtcdDriver) heartBeat() {
+func (e *EtcdDriver) heartBeat(ctx context.Context) {
 label:
-	leaseCh, err := e.keepAlive(context.Background(), e.nodeID)
+	leaseCh, err := e.keepAlive(ctx, e.nodeID)
 	if err != nil {
 		return
 	}
 	for {
 		select {
-		case <-e.stopChan:
+		case <-e.ctx.Done():
 			{
-				e.revoke()
-				e.logger.Errorf("driver stopped")
+				e.logger.Infof("driver stopped")
 				return
 			}
 		case _, ok := <-leaseCh:
@@ -183,22 +183,24 @@ func (e *EtcdDriver) NodeID() string {
 	return e.nodeID
 }
 
-func (e *EtcdDriver) GetNodes() (nodes []string, err error) {
+func (e *EtcdDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 	return e.getServices(), nil
 }
 
-func (e *EtcdDriver) Start() (err error) {
-	e.stopChan = make(chan int, 1)
-	go e.heartBeat()
-	err = e.watchService(e.serviceName)
+func (e *EtcdDriver) Start(ctx context.Context) (err error) {
+	// renew a global ctx when start every time
+	e.ctx, e.cancel = context.WithCancel(context.TODO())
+	go e.heartBeat(ctx)
+	err = e.watchService(ctx, e.serviceName)
 	if err != nil {
 		return
 	}
 	return nil
 }
 
-func (e *EtcdDriver) Stop() (err error) {
-	close(e.stopChan)
+func (e *EtcdDriver) Stop(ctx context.Context) (err error) {
+	e.revoke(ctx)
+	e.cancel()
 	return
 }
 

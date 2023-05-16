@@ -23,7 +23,11 @@ type RedisDriver struct {
 	timeout     time.Duration
 	logger      dlog.Logger
 	started     bool
-	stopChan    chan interface{}
+
+	// this context is used to define
+	// the life time of this driver.
+	runtimeCtx    context.Context
+	runtimeCancel context.CancelFunc
 
 	sync.Mutex
 }
@@ -53,14 +57,14 @@ func (rd *RedisDriver) NodeID() string {
 	return rd.nodeID
 }
 
-func (rd *RedisDriver) Start() (err error) {
+func (rd *RedisDriver) Start(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
 	if rd.started {
 		err = errors.New("this driver is started")
 		return
 	}
-	rd.stopChan = make(chan interface{}, 1)
+	rd.runtimeCtx, rd.runtimeCancel = context.WithCancel(context.TODO())
 	rd.started = true
 	// register
 	err = rd.registerServiceNode()
@@ -73,17 +77,17 @@ func (rd *RedisDriver) Start() (err error) {
 	return
 }
 
-func (rd *RedisDriver) Stop() (err error) {
+func (rd *RedisDriver) Stop(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
-	close(rd.stopChan)
+	rd.runtimeCancel()
 	rd.started = false
 	return
 }
 
-func (rd *RedisDriver) GetNodes() (nodes []string, err error) {
+func (rd *RedisDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
-	return rd.scan(mathStr)
+	return rd.scan(ctx, mathStr)
 }
 
 // private function
@@ -98,7 +102,7 @@ func (rd *RedisDriver) heartBeat() {
 					rd.logger.Errorf("register service node error %+v", err)
 				}
 			}
-		case <-rd.stopChan:
+		case <-rd.runtimeCtx.Done():
 			{
 				if err := rd.c.Del(context.Background(), rd.nodeID, rd.nodeID).Err(); err != nil {
 					rd.logger.Errorf("unregister service node error %+v", err)
@@ -113,9 +117,8 @@ func (rd *RedisDriver) registerServiceNode() error {
 	return rd.c.SetEX(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
 }
 
-func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
+func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, error) {
 	ret := make([]string, 0)
-	ctx := context.Background()
 	iter := rd.c.Scan(ctx, 0, matchStr, -1).Iterator()
 	for iter.Next(ctx) {
 		err := iter.Err()
