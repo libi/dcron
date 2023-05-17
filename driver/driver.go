@@ -31,3 +31,7 @@ func NewRedisDriver(redisClient *redis.Client) DriverV2 {
 func NewEtcdDriver(etcdCli *clientv3.Client) DriverV2 {
 	return newEtcdDriver(etcdCli)
 }
+
+func NewRedisZSetDriver(redisClient *redis.Client) DriverV2 {
+	return newRedisZSetDriver(redisClient)
+}
