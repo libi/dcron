@@ -69,6 +69,15 @@ func (ts *TestINodePoolSuite) declareEtcdDrivers(clients *[]*clientv3.Client, dr
 	}
 }
 
+func (ts *TestINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, drivers *[]driver.DriverV2, numberOfNodes int) {
+	for i := 0; i < numberOfNodes; i++ {
+		*clients = append(*clients, redis.NewClient(&redis.Options{
+			Addr: ts.rds.Addr(),
+		}))
+		*drivers = append(*drivers, driver.NewRedisZSetDriver((*clients)[i]))
+	}
+}
+
 func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, ServiceName string, nodePools *[]dcron.INodePool, updateDuration time.Duration) {
 	for i := 0; i < numberOfNodes; i++ {
 		err := (*nodePools)[i].Start(context.Background())
@@ -121,6 +130,24 @@ func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
 
 	ts.setUpEtcd()
 	ts.declareEtcdDrivers(&clients, &drivers, numberOfNodes)
+
+	for i := 0; i < numberOfNodes; i++ {
+		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
+	}
+	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+}
+
+func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
+	var clients []*redis.Client
+	var drivers []driver.DriverV2
+	var nodePools []dcron.INodePool
+
+	numberOfNodes := 5
+	ServiceName := "TestMultiNodesEtcd"
+	updateDuration := 2 * time.Second
+
+	ts.setUpRedis()
+	ts.declareRedisZSetDrivers(&clients, &drivers, numberOfNodes)
 
 	for i := 0; i < numberOfNodes; i++ {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))

@@ -1,6 +1,10 @@
 package driver
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // GlobalKeyPrefix is global redis key preifx
 const GlobalKeyPrefix = "distributed-cron:"
@@ -19,4 +23,8 @@ func GetStableJobStore(serviceName string) string {
 
 func GetStableJobStoreTxKey(serviceName string) string {
 	return GetKeyPre(serviceName) + "TX:stable-jobs"
+}
+
+func TimePre(t time.Time, preDuration time.Duration) int64 {
+	return t.Add(-preDuration).Unix()
 }
