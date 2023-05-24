@@ -2,7 +2,6 @@ package driver_test
 
 import (
 	"context"
-	"log"
 	"testing"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 )
 
 func testFuncNewRedisZSetDriver(addr string) driver.DriverV2 {
-	log.Println("redis=", addr)
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})

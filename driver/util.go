@@ -26,5 +26,5 @@ func GetStableJobStoreTxKey(serviceName string) string {
 }
 
 func TimePre(t time.Time, preDuration time.Duration) int64 {
-	return t.Unix() - int64(preDuration.Seconds())
+	return t.Add(-preDuration).Unix()
 }
