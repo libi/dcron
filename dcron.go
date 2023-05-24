@@ -44,7 +44,6 @@ type Dcron struct {
 	crOptions []cron.Option
 
 	RecoverFunc RecoverFuncType
-	jobTimeout  time.Duration
 }
 
 // NewDcron create a Dcron
@@ -105,21 +104,15 @@ func (d *Dcron) GetLogger() dlog.Logger {
 
 // AddJob  add a job
 func (d *Dcron) AddJob(jobName, cronStr string, job Job) (err error) {
-	return d.addJob(jobName, cronStr, nil, job, nil)
+	return d.addJob(jobName, cronStr, nil, job)
 }
 
 // AddFunc add a cron func
 func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
-	return d.addJob(jobName, cronStr, cmd, nil, nil)
+	return d.addJob(jobName, cronStr, cmd, nil)
 }
 
-// AddCmd add a bash shell
-func (d *Dcron) AddCmd(jobName, cronStr string, cmds []string) (err error) {
-
-	return d.addJob(jobName, cronStr, nil, nil, cmds)
-}
-
-func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job, cmds []string) (err error) {
+func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
 	d.logger.Infof("addJob '%s' :  %s", jobName, cronStr)
 
 	d.jobsRWMut.Lock()
@@ -128,13 +121,11 @@ func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job, cmds []stri
 		return errors.New("jobName already exist")
 	}
 	innerJob := JobWarpper{
-		Name:     jobName,
-		CronStr:  cronStr,
-		Func:     cmd,
-		Job:      job,
-		Dcron:    d,
-		Commands: cmds,
-		Timeout:  d.jobTimeout,
+		Name:    jobName,
+		CronStr: cronStr,
+		Func:    cmd,
+		Job:     job,
+		Dcron:   d,
 	}
 	entryID, err := d.cr.AddJob(cronStr, innerJob)
 	if err != nil {
