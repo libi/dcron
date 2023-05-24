@@ -2,7 +2,6 @@ package dcron
 
 import (
 	"errors"
-	"github.com/libi/dcron/special_jobs"
 	"log"
 	"os"
 	"sync"
@@ -111,12 +110,6 @@ func (d *Dcron) AddJob(jobName, cronStr string, job Job) (err error) {
 // AddFunc add a cron func
 func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
 	return d.addJob(jobName, cronStr, cmd, nil)
-}
-
-// AddCmd add a bash shell
-func (d *Dcron) AddCmd(jobName, cronStr string, cmd string, execTimeout time.Duration, outputCall func([]byte, error)) (err error) {
-	cmdJob := special_jobs.BashJob{Cmd: cmd, Timeout: execTimeout, OutputCall: outputCall}
-	return d.addJob(jobName, cronStr, nil, cmdJob)
 }
 
 func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {

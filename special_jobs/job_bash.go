@@ -31,7 +31,7 @@ func (job BashJob) Run() {
 		if job.Timeout > 0 {
 			ctx, cancel := context.WithTimeout(context.Background(), job.Timeout)
 			defer cancel()
-			cmd = exec.CommandContext(ctx, "sh", "-c", job.Cmd)
+			cmd = exec.CommandContext(ctx, "PowerShell", "-Command", job.Cmd)
 		} else {
 			cmd = exec.Command("PowerShell", "-Command", job.Cmd)
 		}

@@ -2,6 +2,7 @@ package dcron_test
 
 import (
 	"fmt"
+	"github.com/libi/dcron/special_jobs"
 	"log"
 	"os"
 	"strings"
@@ -65,7 +66,8 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatal("add func error")
 	}
-	err = dcron2.AddCmd("s2 test4", "* * * * *", "echo hello dcron", time.Second*10, func(output []byte, err error) {
+
+	err = dcron2.AddJob("s2 test4", "* * * * *", special_jobs.NewBashJob("echo hello dcron", time.Second*10, func(output []byte, err error) {
 		if err != nil {
 			t.Fatal("add cmd error")
 		}
@@ -73,7 +75,7 @@ func Test(t *testing.T) {
 		if !strings.Contains(string(output), "hello dcron") {
 			t.Errorf("echo hello dcron output [%s] not expected", output)
 		}
-	})
+	}))
 
 	dcron2.Start()
 
