@@ -4,14 +4,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
-	RedisDriver "github.com/libi/dcron/driver/redis"
+	"github.com/libi/dcron/driver"
 	"github.com/robfig/cron/v3"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	DefaultRedisAddr = "127.0.0.1:6379"
 )
 
 type TestJob1 struct {
@@ -24,92 +30,25 @@ func (t TestJob1) Run() {
 
 var testData = make(map[string]struct{})
 
-func Test(t *testing.T) {
-	drv, err := RedisDriver.NewDriver(&redis.Options{
-		Addr: "127.0.0.1:6379",
-	})
+func TestMultiNodes(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	go runNode(t, drv)
+	go runNode(t, wg)
 	// 间隔1秒启动测试节点刷新逻辑
 	time.Sleep(time.Second)
-	go runNode(t, drv)
-	time.Sleep(time.Second * 2)
-	go runNode(t, drv)
+	go runNode(t, wg)
+	time.Sleep(time.Second)
+	go runNode(t, wg)
 
-	//add recover
-	dcron2 := dcron.NewDcron("server2", drv, cron.WithChain(cron.Recover(cron.DefaultLogger)))
-	dcron2.Start()
-	dcron2.Stop()
-
-	//panic recover test
-	err = dcron2.AddFunc("s2 test1", "* * * * *", func() {
-		panic("panic test")
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	err = dcron2.AddFunc("s2 test2", "* * * * *", func() {
-		t.Log("执行 service2 test2 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	err = dcron2.AddFunc("s2 test3", "* * * * *", func() {
-		t.Log("执行 service2 test3 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	dcron2.Start()
-
-	// set logger
-	logger := &dlog.StdLogger{
-		Log: log.New(os.Stdout, "[test_s3]", log.LstdFlags),
-	}
-	// wrap cron recover
-	rec := dcron.CronOptionChain(cron.Recover(cron.PrintfLogger(logger)))
-
-	// option test
-	dcron3 := dcron.NewDcronWithOption("server3", drv, rec,
-		dcron.WithLogger(logger),
-		dcron.WithHashReplicas(10),
-		dcron.WithNodeUpdateDuration(time.Second*10))
-
-	//panic recover test
-	err = dcron3.AddFunc("s3 test1", "* * * * *", func() {
-		t.Log("执行 server3 test1 任务,模拟 panic", time.Now().Format("15:04:05"))
-		panic("panic test")
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-
-	err = dcron3.AddFunc("s3 test2", "* * * * *", func() {
-		t.Log("执行 server3 test2 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	err = dcron3.AddFunc("s3 test3", "* * * * *", func() {
-		t.Log("执行 server3 test3 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Fatal("add func error")
-	}
-	dcron3.Start()
-
-	//测试120秒后退出
-	time.Sleep(120 * time.Second)
-	t.Log("testData", testData)
-	dcron2.Stop()
-	dcron3.Stop()
+	wg.Wait()
 }
 
-func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
+func runNode(t *testing.T, wg *sync.WaitGroup) {
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: DefaultRedisAddr,
+	})
+	drv := driver.NewRedisDriver(redisCli)
 	dcron := dcron.NewDcron("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
@@ -147,17 +86,18 @@ func runNode(t *testing.T, drv *RedisDriver.RedisDriver) {
 
 	//移除测试
 	dcron.Remove("s1 test3")
+	<-time.After(120 * time.Second)
+	wg.Done()
+	dcron.Stop()
 }
 
 func Test_SecondsJob(t *testing.T) {
-	drv, err := RedisDriver.NewDriver(&redis.Options{
-		Addr: "127.0.0.1:6379",
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: DefaultRedisAddr,
 	})
-	if err != nil {
-		t.Error(err)
-	}
+	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
-	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+	err := dcr.AddFunc("job1", "*/5 * * * * *", func() {
 		t.Log(time.Now())
 	})
 	if err != nil {
@@ -166,4 +106,56 @@ func Test_SecondsJob(t *testing.T) {
 	dcr.Start()
 	time.Sleep(15 * time.Second)
 	dcr.Stop()
+}
+
+func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T) {
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: DefaultRedisAddr,
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(t.Name(), drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(&dlog.StdLogger{
+			Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
+		}),
+		dcron.CronOptionChain(cron.Recover(
+			cron.DefaultLogger,
+		)),
+	)
+	var err error
+	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+		t.Log(time.Now())
+	})
+	require.Nil(t, err)
+	err = dcr.AddFunc("job2", "*/8 * * * * *", func() {
+		panic("test panic")
+	})
+	require.Nil(t, err)
+	err = dcr.AddFunc("job3", "*/2 * * * * *", func() {
+		t.Log("job3:", time.Now())
+	})
+	require.Nil(t, err)
+	dcr.Start()
+	<-time.After(runningTime)
+	dcr.Stop()
+	wg.Done()
+}
+
+func Test_SecondJobWithPanicAndMultiNodes(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(5)
+	go runSecondNode("1", wg, 45*time.Second, t)
+	go runSecondNode("2", wg, 45*time.Second, t)
+	go runSecondNode("3", wg, 45*time.Second, t)
+	go runSecondNode("4", wg, 45*time.Second, t)
+	go runSecondNode("5", wg, 45*time.Second, t)
+	wg.Wait()
+}
+
+func Test_SecondJobWithStopAndSwapNode(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go runSecondNode("1", wg, 60*time.Second, t)
+	go runSecondNode("2", wg, 20*time.Second, t)
+	wg.Wait()
 }
