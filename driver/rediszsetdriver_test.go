@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +21,7 @@ func testFuncNewRedisZSetDriver(addr string) driver.DriverV2 {
 
 func TestRedisZSetDriver_GetNodes(t *testing.T) {
 	rds := miniredis.RunT(t)
-	drvs := make([]driver.DriverV2, 0)
+	drivers := make([]driver.DriverV2, 0)
 	N := 10
 	for i := 0; i < N; i++ {
 		drv := testFuncNewRedisZSetDriver(rds.Addr())
@@ -31,16 +31,16 @@ func TestRedisZSetDriver_GetNodes(t *testing.T) {
 			driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 		err := drv.Start(context.Background())
 		require.Nil(t, err)
-		drvs = append(drvs, drv)
+		drivers = append(drivers, drv)
 	}
 
-	for _, v := range drvs {
+	for _, v := range drivers {
 		nodes, err := v.GetNodes(context.Background())
 		require.Nil(t, err)
 		require.Equal(t, N, len(nodes))
 	}
 
-	for _, v := range drvs {
+	for _, v := range drivers {
 		v.Stop(context.Background())
 	}
 }

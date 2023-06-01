@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -25,7 +25,7 @@ type RedisDriver struct {
 	started     bool
 
 	// this context is used to define
-	// the life time of this driver.
+	// the lifetime of this driver.
 	runtimeCtx    context.Context
 	runtimeCancel context.CancelFunc
 
@@ -60,10 +60,12 @@ func (rd *RedisDriver) NodeID() string {
 func (rd *RedisDriver) Start(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
+
 	if rd.started {
 		err = errors.New("this driver is started")
 		return
 	}
+
 	rd.runtimeCtx, rd.runtimeCancel = context.WithCancel(context.TODO())
 	rd.started = true
 	// register
@@ -114,7 +116,7 @@ func (rd *RedisDriver) heartBeat() {
 }
 
 func (rd *RedisDriver) registerServiceNode() error {
-	return rd.c.SetEX(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
+	return rd.c.SetEx(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
 }
 
 func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, error) {
