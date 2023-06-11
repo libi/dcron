@@ -81,9 +81,7 @@ func (ts *TestINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, 
 func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, ServiceName string, nodePools *[]dcron.INodePool, updateDuration time.Duration) {
 	for i := 0; i < numberOfNodes; i++ {
 		err := (*nodePools)[i].Start(context.Background())
-		if err != nil {
-			ts.T().Fail()
-		}
+		ts.Require().Nil(err)
 	}
 	<-time.After(updateDuration * 2)
 	ring := consistenthash.New(ts.defaultHashReplicas, nil)
@@ -93,13 +91,14 @@ func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, ServiceNam
 
 	for i := 0; i < 10000; i++ {
 		for j := 0; j < numberOfNodes; j++ {
+			ok, err := (*nodePools)[j].CheckJobAvailable(strconv.Itoa(i))
+			ts.Require().Nil(err)
 			ts.Require().Equal(
-				(*nodePools)[j].CheckJobAvailable(strconv.Itoa(i)),
+				ok,
 				(ring.Get(strconv.Itoa(i)) == (*nodePools)[j].GetNodeID()),
 			)
 		}
 	}
-
 }
 
 func (ts *TestINodePoolSuite) TestMultiNodesRedis() {
@@ -143,7 +142,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
 	var nodePools []dcron.INodePool
 
 	numberOfNodes := 5
-	ServiceName := "TestMultiNodesEtcd"
+	ServiceName := "TestMultiNodesZSet"
 	updateDuration := 2 * time.Second
 
 	ts.setUpRedis()

@@ -17,9 +17,7 @@ import (
 const (
 	defaultReplicas = 50
 	defaultDuration = 3 * time.Second
-)
 
-const (
 	dcronRunning = 1
 	dcronStopped = 0
 )
@@ -45,6 +43,8 @@ type Dcron struct {
 	crOptions []cron.Option
 
 	RecoverFunc RecoverFuncType
+
+	recentJobs IRecentJobPacker
 }
 
 // NewDcron create a Dcron
@@ -66,7 +66,6 @@ func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...
 
 	dcron.cr = cron.New(dcron.crOptions...)
 	dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
-
 	return dcron
 }
 
@@ -137,8 +136,12 @@ func (d *Dcron) Remove(jobName string) {
 	}
 }
 
-func (d *Dcron) allowThisNodeRun(jobName string) bool {
-	return d.nodePool.CheckJobAvailable(jobName)
+func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
+	ok, err := d.nodePool.CheckJobAvailable(jobName)
+	if err == ErrNodePoolIsUpgrading && d.recentJobs != nil {
+		d.recentJobs.AddJob(jobName, time.Now())
+	}
+	return
 }
 
 // Start job
@@ -147,14 +150,13 @@ func (d *Dcron) Start() {
 	if d.RecoverFunc != nil {
 		d.RecoverFunc(d)
 	}
-
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)
 			return
 		}
 		d.cr.Start()
-		d.logger.Infof("dcron started , nodeID is %s", d.nodePool.GetNodeID())
+		d.logger.Infof("dcron started, nodeID is %s", d.nodePool.GetNodeID())
 	} else {
 		d.logger.Infof("dcron have started")
 	}
@@ -171,8 +173,7 @@ func (d *Dcron) Run() {
 			atomic.StoreInt32(&d.running, dcronStopped)
 			return
 		}
-
-		d.logger.Infof("dcron running nodeID is %s", d.nodePool.GetNodeID())
+		d.logger.Infof("dcron running, nodeID is %s", d.nodePool.GetNodeID())
 		d.cr.Run()
 	} else {
 		d.logger.Infof("dcron already running")
