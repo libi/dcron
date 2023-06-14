@@ -31,11 +31,15 @@ type JobWarpper struct {
 func (job JobWarpper) Run() {
 	//如果该任务分配给了这个节点 则允许执行
 	if job.Dcron.allowThisNodeRun(job.Name) {
-		if job.Func != nil {
-			job.Func()
-		}
-		if job.Job != nil {
-			job.Job.Run()
-		}
+		job.Execute()
+	}
+}
+
+func (job JobWarpper) Execute() {
+	if job.Func != nil {
+		job.Func()
+	}
+	if job.Job != nil {
+		job.Job.Run()
 	}
 }

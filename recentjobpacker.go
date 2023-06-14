@@ -70,6 +70,8 @@ func (rjp *RecentJobPacker) PopAllJobs() (jobNames []string) {
 	for rjp.recentJobs.Len() > 0 {
 		jobNames = append(jobNames, heap.Pop(&rjp.recentJobs).(JobWithTime).JobName)
 	}
+	rjp.recentJobs = make(JobWithTimeHeap, 0)
+	heap.Init(&rjp.recentJobs)
 	return
 }
 

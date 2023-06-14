@@ -138,7 +138,15 @@ func (d *Dcron) Remove(jobName string) {
 
 func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
 	ok, err := d.nodePool.CheckJobAvailable(jobName)
-	if err == ErrNodePoolIsUpgrading && d.recentJobs != nil {
+	if err != nil {
+		d.logger.Errorf("allow this node run error, err=%v", err)
+		ok = false
+	} else {
+		if d.recentJobs != nil {
+			go d.reRunRecentJobs(d.recentJobs.PopAllJobs())
+		}
+	}
+	if d.recentJobs != nil {
 		d.recentJobs.AddJob(jobName, time.Now())
 	}
 	return
@@ -197,6 +205,16 @@ func (d *Dcron) Stop() {
 			d.cr.Stop()
 			d.logger.Infof("dcron stopped")
 			return
+		}
+	}
+}
+
+func (d *Dcron) reRunRecentJobs(jobNames []string) {
+	for _, jobName := range jobNames {
+		if job, ok := d.jobs[jobName]; ok {
+			if ok, _ := d.nodePool.CheckJobAvailable(jobName); ok {
+				job.Execute()
+			}
 		}
 	}
 }
