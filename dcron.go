@@ -145,15 +145,15 @@ func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
 	if err != nil {
 		d.logger.Errorf("allow this node run error, err=%v", err)
 		ok = false
-		d.state.Store(NodePoolState_Upgrade)
+		d.state.Store(dcronState_Upgrade)
 	} else {
-		d.state.Store(NodePoolState_Steady)
+		d.state.Store(dcronState_Steady)
 		if d.recentJobs != nil {
 			go d.reRunRecentJobs(d.recentJobs.PopAllJobs())
 		}
 	}
 	if d.recentJobs != nil {
-		if d.state.Load().(string) == NodePoolState_Upgrade {
+		if d.state.Load().(string) == dcronState_Upgrade {
 			d.recentJobs.AddJob(jobName, time.Now())
 		}
 	}
