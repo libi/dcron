@@ -20,6 +20,9 @@ const (
 
 	dcronRunning = 1
 	dcronStopped = 0
+
+	dcronState_Steady  = "dcronState_Steady"
+	dcronState_Upgrade = "dcronState_Upgrade"
 )
 
 type RecoverFuncType func(d *Dcron)
@@ -45,6 +48,7 @@ type Dcron struct {
 	RecoverFunc RecoverFuncType
 
 	recentJobs IRecentJobPacker
+	state      atomic.Value
 }
 
 // NewDcron create a Dcron
@@ -141,13 +145,17 @@ func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
 	if err != nil {
 		d.logger.Errorf("allow this node run error, err=%v", err)
 		ok = false
+		d.state.Store(NodePoolState_Upgrade)
 	} else {
+		d.state.Store(NodePoolState_Steady)
 		if d.recentJobs != nil {
 			go d.reRunRecentJobs(d.recentJobs.PopAllJobs())
 		}
 	}
 	if d.recentJobs != nil {
-		d.recentJobs.AddJob(jobName, time.Now())
+		if d.state.Load().(string) == NodePoolState_Upgrade {
+			d.recentJobs.AddJob(jobName, time.Now())
+		}
 	}
 	return
 }
@@ -210,6 +218,7 @@ func (d *Dcron) Stop() {
 }
 
 func (d *Dcron) reRunRecentJobs(jobNames []string) {
+	d.logger.Infof("reRunRecentJobs: length=%d", len(jobNames))
 	for _, jobName := range jobNames {
 		if job, ok := d.jobs[jobName]; ok {
 			if ok, _ := d.nodePool.CheckJobAvailable(jobName); ok {

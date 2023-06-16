@@ -179,7 +179,7 @@ func Test_WithClusterStableNodes(t *testing.T) {
 			dcron.WithNodeUpdateDuration(timeWindow),
 		)
 		var err error
-		err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+		err = dcr.AddFunc("job1", "*/3 * * * * *", func() {
 			t.Log(time.Now())
 		})
 		require.Nil(t, err)
@@ -187,7 +187,7 @@ func Test_WithClusterStableNodes(t *testing.T) {
 			t.Logf("job2: %v", time.Now())
 		})
 		require.Nil(t, err)
-		err = dcr.AddFunc("job3", "*/2 * * * * *", func() {
+		err = dcr.AddFunc("job3", "* * * * * *", func() {
 			t.Log("job3:", time.Now())
 		})
 		require.Nil(t, err)
