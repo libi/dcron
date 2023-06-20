@@ -21,8 +21,8 @@ const (
 	dcronRunning = 1
 	dcronStopped = 0
 
-	dcronState_Steady  = "dcronState_Steady"
-	dcronState_Upgrade = "dcronState_Upgrade"
+	dcronStateSteady  = "dcronStateSteady"
+	dcronStateUpgrade = "dcronStateUpgrade"
 )
 
 type RecoverFuncType func(d *Dcron)
@@ -145,15 +145,15 @@ func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
 	if err != nil {
 		d.logger.Errorf("allow this node run error, err=%v", err)
 		ok = false
-		d.state.Store(dcronState_Upgrade)
+		d.state.Store(dcronStateUpgrade)
 	} else {
-		d.state.Store(dcronState_Steady)
+		d.state.Store(dcronStateSteady)
 		if d.recentJobs != nil {
 			go d.reRunRecentJobs(d.recentJobs.PopAllJobs())
 		}
 	}
 	if d.recentJobs != nil {
-		if d.state.Load().(string) == dcronState_Upgrade {
+		if d.state.Load().(string) == dcronStateUpgrade {
 			d.recentJobs.AddJob(jobName, time.Now())
 		}
 	}

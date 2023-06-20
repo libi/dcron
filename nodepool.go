@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	NodePoolState_Steady  = "NodePoolState_Steady"
-	NodePoolState_Upgrade = "NodePoolState_Upgrade"
+	NodePoolStateSteady  = "NodePoolStateSteady"
+	NodePoolStateUpgrade = "NodePoolStateUpgrade"
 )
 
 // NodePool
@@ -87,12 +87,12 @@ func (np *NodePool) Start(ctx context.Context) (err error) {
 		np.logger.Errorf("get nodes error: %v", err)
 		return
 	}
-	np.state.Store(NodePoolState_Upgrade)
+	np.state.Store(NodePoolStateUpgrade)
 	np.updateHashRing(nowNodes)
 	go np.waitingForHashRing()
 
 	// stuck util the cluster state came to steady.
-	for np.getState() != NodePoolState_Steady {
+	for np.getState() != NodePoolStateSteady {
 		<-time.After(np.updateDuration)
 	}
 	np.logger.Infof("nodepool started for serve, nodeID=%s", np.nodeID)
@@ -110,7 +110,7 @@ func (np *NodePool) CheckJobAvailable(jobName string) (bool, error) {
 	if np.nodes.IsEmpty() {
 		return false, nil
 	}
-	if np.state.Load().(string) != NodePoolState_Steady {
+	if np.state.Load().(string) != NodePoolStateSteady {
 		return false, ErrNodePoolIsUpgrading
 	}
 	targetNode := np.nodes.Get(jobName)
@@ -160,12 +160,12 @@ func (np *NodePool) updateHashRing(nodes []string) {
 	np.rwMut.Lock()
 	defer np.rwMut.Unlock()
 	if np.equalRing(nodes) {
-		np.state.Store(NodePoolState_Steady)
+		np.state.Store(NodePoolStateSteady)
 		np.logger.Infof("nowNodes=%v, preNodes=%v", nodes, np.preNodes)
 		return
 	}
 	np.lastUpdateNodesTime.Store(time.Now())
-	np.state.Store(NodePoolState_Upgrade)
+	np.state.Store(NodePoolStateUpgrade)
 	np.logger.Infof("update hashRing nodes=%+v", nodes)
 	np.preNodes = make([]string, len(nodes))
 	copy(np.preNodes, nodes)
