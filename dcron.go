@@ -17,11 +17,12 @@ import (
 const (
 	defaultReplicas = 50
 	defaultDuration = 3 * time.Second
-)
 
-const (
 	dcronRunning = 1
 	dcronStopped = 0
+
+	dcronStateSteady  = "dcronStateSteady"
+	dcronStateUpgrade = "dcronStateUpgrade"
 )
 
 type RecoverFuncType func(d *Dcron)
@@ -45,6 +46,9 @@ type Dcron struct {
 	crOptions []cron.Option
 
 	RecoverFunc RecoverFuncType
+
+	recentJobs IRecentJobPacker
+	state      atomic.Value
 }
 
 // NewDcron create a Dcron
@@ -66,7 +70,6 @@ func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...
 
 	dcron.cr = cron.New(dcron.crOptions...)
 	dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
-
 	return dcron
 }
 
@@ -137,8 +140,24 @@ func (d *Dcron) Remove(jobName string) {
 	}
 }
 
-func (d *Dcron) allowThisNodeRun(jobName string) bool {
-	return d.nodePool.CheckJobAvailable(jobName)
+func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
+	ok, err := d.nodePool.CheckJobAvailable(jobName)
+	if err != nil {
+		d.logger.Errorf("allow this node run error, err=%v", err)
+		ok = false
+		d.state.Store(dcronStateUpgrade)
+	} else {
+		d.state.Store(dcronStateSteady)
+		if d.recentJobs != nil {
+			go d.reRunRecentJobs(d.recentJobs.PopAllJobs())
+		}
+	}
+	if d.recentJobs != nil {
+		if d.state.Load().(string) == dcronStateUpgrade {
+			d.recentJobs.AddJob(jobName, time.Now())
+		}
+	}
+	return
 }
 
 // Start job
@@ -147,14 +166,13 @@ func (d *Dcron) Start() {
 	if d.RecoverFunc != nil {
 		d.RecoverFunc(d)
 	}
-
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
 		if err := d.startNodePool(); err != nil {
 			atomic.StoreInt32(&d.running, dcronStopped)
 			return
 		}
 		d.cr.Start()
-		d.logger.Infof("dcron started , nodeID is %s", d.nodePool.GetNodeID())
+		d.logger.Infof("dcron started, nodeID is %s", d.nodePool.GetNodeID())
 	} else {
 		d.logger.Infof("dcron have started")
 	}
@@ -171,8 +189,7 @@ func (d *Dcron) Run() {
 			atomic.StoreInt32(&d.running, dcronStopped)
 			return
 		}
-
-		d.logger.Infof("dcron running nodeID is %s", d.nodePool.GetNodeID())
+		d.logger.Infof("dcron running, nodeID is %s", d.nodePool.GetNodeID())
 		d.cr.Run()
 	} else {
 		d.logger.Infof("dcron already running")
@@ -196,6 +213,17 @@ func (d *Dcron) Stop() {
 			d.cr.Stop()
 			d.logger.Infof("dcron stopped")
 			return
+		}
+	}
+}
+
+func (d *Dcron) reRunRecentJobs(jobNames []string) {
+	d.logger.Infof("reRunRecentJobs: length=%d", len(jobNames))
+	for _, jobName := range jobNames {
+		if job, ok := d.jobs[jobName]; ok {
+			if ok, _ := d.nodePool.CheckJobAvailable(jobName); ok {
+				job.Execute()
+			}
 		}
 	}
 }

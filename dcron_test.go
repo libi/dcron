@@ -159,3 +159,48 @@ func Test_SecondJobWithStopAndSwapNode(t *testing.T) {
 	go runSecondNode("2", wg, 20*time.Second, t)
 	wg.Wait()
 }
+
+func Test_WithClusterStableNodes(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(5)
+
+	runningTime := 60 * time.Second
+	startFunc := func(id string, timeWindow time.Duration, t *testing.T) {
+		redisCli := redis.NewClient(&redis.Options{
+			Addr: DefaultRedisAddr,
+		})
+		drv := driver.NewRedisDriver(redisCli)
+		dcr := dcron.NewDcronWithOption(t.Name(), drv,
+			dcron.CronOptionSeconds(),
+			dcron.WithLogger(&dlog.StdLogger{
+				Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
+			}),
+			dcron.WithClusterStable(timeWindow),
+			dcron.WithNodeUpdateDuration(timeWindow),
+		)
+		var err error
+		err = dcr.AddFunc("job1", "*/3 * * * * *", func() {
+			t.Log(time.Now())
+		})
+		require.Nil(t, err)
+		err = dcr.AddFunc("job2", "*/8 * * * * *", func() {
+			t.Logf("job2: %v", time.Now())
+		})
+		require.Nil(t, err)
+		err = dcr.AddFunc("job3", "* * * * * *", func() {
+			t.Log("job3:", time.Now())
+		})
+		require.Nil(t, err)
+		dcr.Start()
+		<-time.After(runningTime)
+		dcr.Stop()
+		wg.Done()
+	}
+
+	go startFunc("1", time.Second*6, t)
+	go startFunc("2", time.Second*6, t)
+	go startFunc("3", time.Second*6, t)
+	go startFunc("4", time.Second*6, t)
+	go startFunc("5", time.Second*6, t)
+	wg.Wait()
+}
