@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 
-	"github.com/go-redis/redis/v8"
-	examplesCommon "github.com/libi/dcron/examples/common"
+	examplesCommon "github.com/gwind55/dcron/examples/common"
+	"github.com/redis/go-redis/v9"
 )
 
 var (

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/go-redis/redis/v8"
-	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
+	"github.com/gwind55/dcron/dlog"
+	"github.com/gwind55/dcron/driver"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 

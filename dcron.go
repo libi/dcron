@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
+	"github.com/gwind55/dcron/dlog"
+	"github.com/gwind55/dcron/driver"
 	"github.com/robfig/cron/v3"
 )
 

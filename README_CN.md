@@ -1,8 +1,8 @@
 Dcron
 ==============
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
-[![Tests](https://github.com/libi/dcron/actions/workflows/test.yml/badge.svg)](https://github.com/libi/dcron/actions/workflows/test.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/libi/dcron#1)](https://goreportcard.com/report/github.com/libi/dcron)
+[![Tests](https://github.com/gwind55/dcron/actions/workflows/test.yml/badge.svg)](https://github.com/gwind55/dcron/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gwind55/dcron#1)](https://goreportcard.com/report/github.com/gwind55/dcron)
 
 [简体中文](README_CN.md) | [English](README.md)
 
@@ -70,7 +70,7 @@ dcron := NewDcron("server1", drv,cron.WithSeconds())
 ```
 
 另外还可以通过 ```NewDcronWithOption``` 方法初始化，可以配置日志输出等。
-可选配置可以参考：https://github.com/libi/dcron/blob/master/option.go
+可选配置可以参考：https://github.com/gwind55/dcron/blob/master/option.go
 
 
 ### 服务名/serviceName
