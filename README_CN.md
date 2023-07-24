@@ -76,3 +76,6 @@ dcron := NewDcron("server1", drv,cron.WithSeconds())
 
 多个节点使用同一个服务名会被视为同一任务组，在同一个任务组内的任务会均匀分配至组内各个节点并确保不会重复执行
 
+### Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=libi/dcron&type=Date)](https://star-history.com/#libi/dcron&Date)
