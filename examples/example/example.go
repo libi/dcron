@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -14,9 +13,6 @@ import (
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
-	etcdDriver "github.com/libi/dcron/driver/etcd"
-	redisDriver "github.com/libi/dcron/driver/redis"
-	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -26,7 +22,6 @@ const (
 
 var (
 	addr       = flag.String("addr", "127.0.0.1:6379", "the addr of driver service")
-	driverType = flag.String("driver_type", "redis", "the driver type [redis/etcd]")
 	serverName = flag.String("server_name", "server", "the server name of dcron in this process")
 	subId      = flag.String("sub_id", "1", "this process sub id in this server")
 	jobNumber  = flag.Int("jobnumber", 3, "there number of cron job")
@@ -60,26 +55,14 @@ func (wj *WriteJob) Run() {
 	}
 }
 
-func getTheDriver() (driver.Driver, error) {
-
-	if *driverType == DriverType_REDIS {
-		return redisDriver.NewDriver(&redis.Options{
-			Addr: *addr,
-		})
-	} else if *driverType == DriverType_ETCD {
-		return etcdDriver.NewEtcdDriver(&clientv3.Config{
-			Endpoints: []string{*addr},
-		})
-	}
-	return nil, errors.New("driverType not suit")
-}
-
 func main() {
 	flag.Parse()
-	driver, err := getTheDriver()
-	if err != nil {
-		panic(err)
-	}
+	var err error
+
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: *addr,
+	})
+	driver := driver.NewRedisDriver(redisCli)
 	logger := &dlog.StdLogger{
 		Log: log.New(os.Stdout, "["+*subId+"]", log.LstdFlags),
 	}
