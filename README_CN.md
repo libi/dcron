@@ -54,7 +54,9 @@ dcron.Run()
 ```
 
 ### 使用案例
-[examples](examples/)
+- [examples](examples/)
+- [example_app](https://github.com/dxyinme/dcron_example_app)
+
 
 ### 更多配置
 
