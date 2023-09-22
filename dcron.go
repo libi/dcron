@@ -227,3 +227,7 @@ func (d *Dcron) reRunRecentJobs(jobNames []string) {
 		}
 	}
 }
+
+func (d *Dcron) NodeID() string {
+	return d.nodePool.GetNodeID()
+}
