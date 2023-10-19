@@ -141,6 +141,43 @@ func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *
 	wg.Done()
 }
 
+func runSecondNodeWithLogger(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T) {
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: DefaultRedisAddr,
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(t.Name(), drv,
+		// must use `WithPrintLogInfo` before `WithLogger`
+		// because we need to set up `cron` log level, it depends
+		// on ths value of this configuration.
+		dcron.WithPrintLogInfo(),
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(&dlog.StdLogger{
+			Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
+		}),
+		dcron.CronOptionChain(cron.Recover(
+			cron.DefaultLogger,
+		)),
+	)
+	var err error
+	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {
+		t.Log(time.Now())
+	})
+	require.Nil(t, err)
+	err = dcr.AddFunc("job2", "*/8 * * * * *", func() {
+		panic("test panic")
+	})
+	require.Nil(t, err)
+	err = dcr.AddFunc("job3", "*/2 * * * * *", func() {
+		t.Log("job3:", time.Now())
+	})
+	require.Nil(t, err)
+	dcr.Start()
+	<-time.After(runningTime)
+	dcr.Stop()
+	wg.Done()
+}
+
 func Test_SecondJobWithPanicAndMultiNodes(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(5)
@@ -157,5 +194,16 @@ func Test_SecondJobWithStopAndSwapNode(t *testing.T) {
 	wg.Add(2)
 	go runSecondNode("1", wg, 60*time.Second, t)
 	go runSecondNode("2", wg, 20*time.Second, t)
+	wg.Wait()
+}
+
+func Test_SecondJobLog_Issue68(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(5)
+	go runSecondNodeWithLogger("1", wg, 45*time.Second, t)
+	go runSecondNodeWithLogger("2", wg, 45*time.Second, t)
+	go runSecondNodeWithLogger("3", wg, 45*time.Second, t)
+	go runSecondNodeWithLogger("4", wg, 45*time.Second, t)
+	go runSecondNodeWithLogger("5", wg, 45*time.Second, t)
 	wg.Wait()
 }
