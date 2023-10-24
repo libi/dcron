@@ -89,3 +89,11 @@ func WithRecoverFunc(recoverFunc RecoverFuncType) Option {
 		dcron.RecoverFunc = recoverFunc
 	}
 }
+
+// You can use this option to start the recent jobs rerun
+// after the cluster upgrading.
+func WithClusterStable(timeWindow time.Duration) Option {
+	return func(d *Dcron) {
+		d.recentJobs = NewRecentJobPacker(timeWindow)
+	}
+}

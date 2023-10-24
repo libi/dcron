@@ -3,7 +3,9 @@ package dcron
 import (
 	"context"
 	"log"
+	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/libi/dcron/consistenthash"
@@ -11,7 +13,22 @@ import (
 	"github.com/libi/dcron/driver"
 )
 
-// NodePool is a node pool
+const (
+	NodePoolStateSteady  = "NodePoolStateSteady"
+	NodePoolStateUpgrade = "NodePoolStateUpgrade"
+)
+
+// NodePool
+// For cluster steable.
+// NodePool has 2 states:
+// 1. Steady
+//		If this nodePoolLists is the same as the last update,
+//		we will mark this node's state to Steady. In this state,
+//		this node can run jobs.
+// 2. Upgrade
+//    If this nodePoolLists is different to the last update,
+// 		we will mark this node's state to Upgrade. In this state,
+//		this node can not run jobs.
 type NodePool struct {
 	serviceName string
 	nodeID      string
@@ -27,9 +44,18 @@ type NodePool struct {
 	logger   dlog.Logger
 	stopChan chan int
 	preNodes []string // sorted
+
+	lastUpdateNodesTime atomic.Value
+	state               atomic.Value
 }
 
-func NewNodePool(serviceName string, drv driver.DriverV2, updateDuration time.Duration, hashReplicas int, logger dlog.Logger) INodePool {
+func NewNodePool(
+	serviceName string,
+	drv driver.DriverV2,
+	updateDuration time.Duration,
+	hashReplicas int,
+	logger dlog.Logger,
+) INodePool {
 	np := &NodePool{
 		serviceName:    serviceName,
 		driver:         drv,
@@ -61,26 +87,37 @@ func (np *NodePool) Start(ctx context.Context) (err error) {
 		np.logger.Errorf("get nodes error: %v", err)
 		return
 	}
+	np.state.Store(NodePoolStateUpgrade)
 	np.updateHashRing(nowNodes)
 	go np.waitingForHashRing()
+
+	// stuck util the cluster state came to steady.
+	for np.getState() != NodePoolStateSteady {
+		<-time.After(np.updateDuration)
+	}
+	np.logger.Infof("nodepool started for serve, nodeID=%s", np.nodeID)
+
 	return
 }
 
 // Check if this job can be run in this node.
-func (np *NodePool) CheckJobAvailable(jobName string) bool {
+func (np *NodePool) CheckJobAvailable(jobName string) (bool, error) {
 	np.rwMut.RLock()
 	defer np.rwMut.RUnlock()
 	if np.nodes == nil {
-		np.logger.Errorf("nodeID=%s, np.nodes is nil", np.nodeID)
+		np.logger.Errorf("nodeID=%s, NodePool.nodes is nil", np.nodeID)
 	}
 	if np.nodes.IsEmpty() {
-		return false
+		return false, nil
+	}
+	if np.state.Load().(string) != NodePoolStateSteady {
+		return false, ErrNodePoolIsUpgrading
 	}
 	targetNode := np.nodes.Get(jobName)
 	if np.nodeID == targetNode {
 		np.logger.Infof("job %s, running in node: %s", jobName, targetNode)
 	}
-	return np.nodeID == targetNode
+	return np.nodeID == targetNode, nil
 }
 
 func (np *NodePool) Stop(ctx context.Context) error {
@@ -92,6 +129,14 @@ func (np *NodePool) Stop(ctx context.Context) error {
 
 func (np *NodePool) GetNodeID() string {
 	return np.nodeID
+}
+
+func (np *NodePool) GetLastNodesUpdateTime() time.Time {
+	return np.lastUpdateNodesTime.Load().(time.Time)
+}
+
+func (np *NodePool) getState() string {
+	return np.state.Load().(string)
 }
 
 func (np *NodePool) waitingForHashRing() {
@@ -115,9 +160,12 @@ func (np *NodePool) updateHashRing(nodes []string) {
 	np.rwMut.Lock()
 	defer np.rwMut.Unlock()
 	if np.equalRing(nodes) {
+		np.state.Store(NodePoolStateSteady)
 		np.logger.Infof("nowNodes=%v, preNodes=%v", nodes, np.preNodes)
 		return
 	}
+	np.lastUpdateNodesTime.Store(time.Now())
+	np.state.Store(NodePoolStateUpgrade)
 	np.logger.Infof("update hashRing nodes=%+v", nodes)
 	np.preNodes = make([]string, len(nodes))
 	copy(np.preNodes, nodes)
@@ -130,6 +178,7 @@ func (np *NodePool) updateHashRing(nodes []string) {
 func (np *NodePool) equalRing(a []string) bool {
 	if len(a) == len(np.preNodes) {
 		la := len(a)
+		sort.Strings(a)
 		for i := 0; i < la; i++ {
 			if a[i] != np.preNodes[i] {
 				return false
