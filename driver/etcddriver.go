@@ -134,7 +134,7 @@ func (e *EtcdDriver) keepAlive(ctx context.Context, nodeID string) (<-chan *clie
 func (e *EtcdDriver) revoke(ctx context.Context) {
 	_, err := e.cli.Lease.Revoke(ctx, e.leaseID)
 	if err != nil {
-		e.logger.Printf("lease revoke error: %v", err)
+		e.logger.Infof("lease revoke error: %v", err)
 	}
 }
 
@@ -142,6 +142,7 @@ func (e *EtcdDriver) heartBeat(ctx context.Context) {
 label:
 	leaseCh, err := e.keepAlive(ctx, e.nodeID)
 	if err != nil {
+		e.logger.Errorf("keep alive error, %v", err)
 		return
 	}
 	for {

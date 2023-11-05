@@ -16,7 +16,15 @@ func WithLogger(logger dlog.Logger) Option {
 		//set dcron logger
 		dcron.logger = logger
 		//set cron logger
-		f := cron.WithLogger(cron.PrintfLogger(logger))
+		var cronLogger cron.Logger
+
+		if dcron.logInfo {
+			cronLogger = cron.VerbosePrintfLogger(logger)
+		} else {
+			cronLogger = cron.PrintfLogger(logger)
+		}
+
+		f := cron.WithLogger(cronLogger)
 		dcron.crOptions = append(dcron.crOptions, f)
 	}
 }
@@ -79,5 +87,13 @@ func CronOptionChain(wrappers ...cron.JobWrapper) Option {
 func WithRecoverFunc(recoverFunc RecoverFuncType) Option {
 	return func(dcron *Dcron) {
 		dcron.RecoverFunc = recoverFunc
+	}
+}
+
+// You can use this option to start the recent jobs rerun
+// after the cluster upgrading.
+func WithClusterStable(timeWindow time.Duration) Option {
+	return func(d *Dcron) {
+		d.recentJobs = NewRecentJobPacker(timeWindow)
 	}
 }
