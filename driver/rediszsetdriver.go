@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisZSetDriver struct {
@@ -21,7 +21,7 @@ type RedisZSetDriver struct {
 	started     bool
 
 	// this context is used to define
-	// the life time of this driver.
+	// the lifetime of this driver.
 	runtimeCtx    context.Context
 	runtimeCancel context.CancelFunc
 
@@ -133,7 +133,7 @@ func (rd *RedisZSetDriver) heartBeat() {
 }
 
 func (rd *RedisZSetDriver) registerServiceNode() error {
-	return rd.c.ZAdd(context.Background(), GetKeyPre(rd.serviceName), &redis.Z{
+	return rd.c.ZAdd(context.Background(), GetKeyPre(rd.serviceName), redis.Z{
 		Score:  float64(time.Now().Unix()),
 		Member: rd.nodeID,
 	}).Err()

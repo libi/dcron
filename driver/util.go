@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// GlobalKeyPrefix is global redis key preifx
+// GlobalKeyPrefix is a global redis key prefix
 const GlobalKeyPrefix = "distributed-cron:"
 
 func GetKeyPre(serviceName string) string {
