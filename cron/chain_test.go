@@ -150,7 +150,6 @@ func TestChainDelayIfStillRunning(t *testing.T) {
 			t.Error("expected both jobs done, got", started, done)
 		}
 	})
-
 }
 
 func TestChainSkipIfStillRunning(t *testing.T) {

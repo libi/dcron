@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/libi/dcron/dlog"
 )
 
 // Many tests schedule a job for every second, and then wait at most a second
@@ -34,7 +36,7 @@ func (sw *syncWriter) String() string {
 	return sw.wr.String()
 }
 
-func newBufLogger(sw *syncWriter) Logger {
+func newBufLogger(sw *syncWriter) dlog.Logger {
 	return PrintfLogger(log.New(sw, "", log.LstdFlags))
 }
 

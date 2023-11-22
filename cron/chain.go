@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/libi/dcron/dlog"
 )
 
 // JobWrapper decorates the given Job with some behavior.
@@ -24,9 +26,12 @@ func NewChain(c ...JobWrapper) Chain {
 // Then decorates the given job with all JobWrappers in the chain.
 //
 // This:
-//     NewChain(m1, m2, m3).Then(job)
+//
+//	NewChain(m1, m2, m3).Then(job)
+//
 // is equivalent to:
-//     m1(m2(m3(job)))
+//
+//	m1(m2(m3(job)))
 func (c Chain) Then(j Job) Job {
 	for i := range c.wrappers {
 		j = c.wrappers[len(c.wrappers)-i-1](j)
@@ -35,7 +40,7 @@ func (c Chain) Then(j Job) Job {
 }
 
 // Recover panics in wrapped jobs and log them with the provided logger.
-func Recover(logger Logger) JobWrapper {
+func Recover(logger dlog.Logger) JobWrapper {
 	return func(j Job) Job {
 		return FuncJob(func() {
 			defer func() {
@@ -47,7 +52,7 @@ func Recover(logger Logger) JobWrapper {
 					if !ok {
 						err = fmt.Errorf("%v", r)
 					}
-					logger.Error(err, "panic", "stack", "...\n"+string(buf))
+					logger.Errorf("panic: stack %v\n%v\n", err, string(buf))
 				}
 			}()
 			j.Run()
@@ -58,7 +63,7 @@ func Recover(logger Logger) JobWrapper {
 // DelayIfStillRunning serializes jobs, delaying subsequent runs until the
 // previous one is complete. Jobs running after a delay of more than a minute
 // have the delay logged at Info.
-func DelayIfStillRunning(logger Logger) JobWrapper {
+func DelayIfStillRunning(logger dlog.Logger) JobWrapper {
 	return func(j Job) Job {
 		var mu sync.Mutex
 		return FuncJob(func() {
@@ -66,7 +71,7 @@ func DelayIfStillRunning(logger Logger) JobWrapper {
 			mu.Lock()
 			defer mu.Unlock()
 			if dur := time.Since(start); dur > time.Minute {
-				logger.Info("delay", "duration", dur)
+				logger.Infof("delay duration=%v", dur)
 			}
 			j.Run()
 		})
@@ -75,7 +80,7 @@ func DelayIfStillRunning(logger Logger) JobWrapper {
 
 // SkipIfStillRunning skips an invocation of the Job if a previous invocation is
 // still running. It logs skips to the given logger at Info level.
-func SkipIfStillRunning(logger Logger) JobWrapper {
+func SkipIfStillRunning(logger dlog.Logger) JobWrapper {
 	return func(j Job) Job {
 		var ch = make(chan struct{}, 1)
 		ch <- struct{}{}
@@ -85,7 +90,7 @@ func SkipIfStillRunning(logger Logger) JobWrapper {
 				defer func() { ch <- v }()
 				j.Run()
 			default:
-				logger.Info("skip")
+				logger.Infof("skip")
 			}
 		})
 	}

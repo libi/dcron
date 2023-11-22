@@ -2,6 +2,8 @@ package cron
 
 import (
 	"time"
+
+	"github.com/libi/dcron/dlog"
 )
 
 // Option represents a modification to the default behavior of a Cron.
@@ -38,7 +40,7 @@ func WithChain(wrappers ...JobWrapper) Option {
 }
 
 // WithLogger uses the provided logger.
-func WithLogger(logger Logger) Option {
+func WithLogger(logger dlog.Logger) Option {
 	return func(c *Cron) {
 		c.logger = logger
 	}
