@@ -1,7 +1,7 @@
 package cron
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"reflect"
 	"sync"
@@ -46,24 +46,25 @@ func TestChainRecover(t *testing.T) {
 		panic("panickingJob panics")
 	})
 
-	t.Run("panic exits job by default", func(t *testing.T) {
-		defer func() {
-			if err := recover(); err == nil {
-				t.Errorf("panic expected, but none received")
-			}
-		}()
-		NewChain().Then(panickingJob).
-			Run()
-	})
+	t.Run("panic exits job by default",
+		func(t *testing.T) {
+			defer func() {
+				if err := recover(); err == nil {
+					t.Errorf("panic expected, but none received")
+				}
+			}()
+			NewChain().Then(panickingJob).
+				Run()
+		})
 
 	t.Run("Recovering JobWrapper recovers", func(t *testing.T) {
-		NewChain(Recover(PrintfLogger(log.New(ioutil.Discard, "", 0)))).
+		NewChain(Recover(PrintfLogger(log.New(io.Discard, "", 0)))).
 			Then(panickingJob).
 			Run()
 	})
 
 	t.Run("composed with the *IfStillRunning wrappers", func(t *testing.T) {
-		NewChain(Recover(PrintfLogger(log.New(ioutil.Discard, "", 0)))).
+		NewChain(Recover(PrintfLogger(log.New(io.Discard, "", 0)))).
 			Then(panickingJob).
 			Run()
 	})
