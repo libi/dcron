@@ -49,7 +49,9 @@ func runNode(t *testing.T, wg *sync.WaitGroup) {
 		Addr: DefaultRedisAddr,
 	})
 	drv := driver.NewRedisDriver(redisCli)
-	dcron := dcron.NewDcron("server1", drv)
+	dcron := dcron.NewDcronWithOption("server1", drv, dcron.WithLogger(&dlog.StdLogger{
+		Log: log.New(os.Stdout, "", log.LstdFlags),
+	}))
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
 	err := dcron.AddFunc("s1 test1", "* * * * *", func() {
