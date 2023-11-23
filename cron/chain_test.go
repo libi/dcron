@@ -59,13 +59,13 @@ func TestChainRecover(t *testing.T) {
 				Run()
 		})
 
-	t.Run("Recovering JobWrapper recovers", func(t *testing.T) {
+	t.Run("Recovering JobWrapper recovers", func(_ *testing.T) {
 		NewChain(Recover(dlog.DefaultPrintfLogger(log.New(io.Discard, "", 0)))).
 			Then(panickingJob).
 			Run()
 	})
 
-	t.Run("composed with the *IfStillRunning wrappers", func(t *testing.T) {
+	t.Run("composed with the *IfStillRunning wrappers", func(_ *testing.T) {
 		NewChain(Recover(dlog.DefaultPrintfLogger(log.New(io.Discard, "", 0)))).
 			Then(panickingJob).
 			Run()
