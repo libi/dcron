@@ -37,7 +37,7 @@ func (sw *syncWriter) String() string {
 }
 
 func newBufLogger(sw *syncWriter) dlog.Logger {
-	return PrintfLogger(log.New(sw, "", log.LstdFlags))
+	return dlog.DefaultPrintfLogger(log.New(sw, "", log.LstdFlags))
 }
 
 func TestFuncPanicRecovery(t *testing.T) {

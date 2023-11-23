@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/libi/dcron/dlog"
 )
 
 func appendingJob(slice *[]int, value int) Job {
@@ -58,13 +60,13 @@ func TestChainRecover(t *testing.T) {
 		})
 
 	t.Run("Recovering JobWrapper recovers", func(t *testing.T) {
-		NewChain(Recover(PrintfLogger(log.New(io.Discard, "", 0)))).
+		NewChain(Recover(dlog.DefaultPrintfLogger(log.New(io.Discard, "", 0)))).
 			Then(panickingJob).
 			Run()
 	})
 
 	t.Run("composed with the *IfStillRunning wrappers", func(t *testing.T) {
-		NewChain(Recover(PrintfLogger(log.New(io.Discard, "", 0)))).
+		NewChain(Recover(dlog.DefaultPrintfLogger(log.New(io.Discard, "", 0)))).
 			Then(panickingJob).
 			Run()
 	})
