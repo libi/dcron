@@ -64,9 +64,12 @@ func main() {
 	})
 	driver := driver.NewRedisDriver(redisCli)
 	logger := &dlog.StdLogger{
-		Log: log.New(os.Stdout, "["+*subId+"]", log.LstdFlags),
+		Log:        log.New(os.Stdout, "["+*subId+"]", log.LstdFlags),
+		LogVerbose: true,
 	}
-	dcron := dcron.NewDcronWithOption(*serverName, driver,
+	dcron := dcron.NewDcronWithOption(
+		*serverName,
+		driver,
 		dcron.WithLogger(logger),
 		dcron.WithHashReplicas(10),
 		dcron.WithNodeUpdateDuration(time.Second*10),

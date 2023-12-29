@@ -26,4 +26,7 @@ jobs:
         go-version: ${{ matrix.go_version }}
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v $(go list ./... | grep -v github.com/libi/dcron/e2e)
+    
+    - name: Test E2E
+      run: go test -v e2e/dcron_test.go

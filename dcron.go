@@ -36,8 +36,7 @@ type Dcron struct {
 	nodePool   INodePool
 	running    int32
 
-	logger  dlog.Logger
-	logInfo bool
+	logger dlog.Logger
 
 	nodeUpdateDuration time.Duration
 	hashReplicas       int
@@ -98,14 +97,14 @@ func (d *Dcron) GetLogger() dlog.Logger {
 
 // AddJob  add a job
 func (d *Dcron) AddJob(jobName, cronStr string, job Job) (err error) {
-	return d.addJob(jobName, cronStr, nil, job)
+	return d.addJob(jobName, cronStr, job)
 }
 
 // AddFunc add a cron func
 func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
-	return d.addJob(jobName, cronStr, cmd, nil)
+	return d.addJob(jobName, cronStr, cron.FuncJob(cmd))
 }
-func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
+func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 	d.logger.Infof("addJob '%s' : %s", jobName, cronStr)
 
 	d.jobsRWMut.Lock()
@@ -116,7 +115,6 @@ func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error)
 	innerJob := JobWarpper{
 		Name:    jobName,
 		CronStr: cronStr,
-		Func:    cmd,
 		Job:     job,
 		Dcron:   d,
 	}
