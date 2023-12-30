@@ -152,19 +152,23 @@ label:
 				e.logger.Infof("driver stopped")
 				return
 			}
-		case leaseResponse, ok := <-leaseCh:
+		case _, ok := <-leaseCh:
 			{
 				// if lease timeout, goto top of
 				// this function to keepalive
 				if !ok {
-					e.logger.Warnf("lease failed, release")
 					goto label
 				}
-				e.logger.Infof("lease id: %d, TTL: %d", leaseResponse.ID, leaseResponse.TTL)
 			}
 		case <-time.After(etcdBusinessTimeout):
 			{
-				e.logger.Errorf("ectd cli keepalive timeout, release")
+				e.logger.Errorf("ectd cli keepalive timeout")
+				return
+			}
+		case <-time.After(time.Duration(e.lease/2) * (time.Second)):
+			{
+				// if near to nodes time,
+				// renew the lease
 				goto label
 			}
 		}
