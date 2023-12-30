@@ -22,7 +22,7 @@ func testFuncNewEtcdDriver(cfg clientv3.Config) driver.DriverV2 {
 
 func TestEtcdDriver_GetNodes(t *testing.T) {
 	etcdsvr := integration.NewLazyCluster()
-	N := 5
+	N := 10
 	drvs := make([]driver.DriverV2, N)
 	for i := 0; i < N; i++ {
 		drv := testFuncNewEtcdDriver(clientv3.Config{

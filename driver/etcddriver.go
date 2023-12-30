@@ -154,14 +154,13 @@ label:
 				e.logger.Infof("driver stopped")
 				return
 			}
-		case resp, ok := <-leaseCh:
+		case _, ok := <-leaseCh:
 			{
 				// if lease failed, goto top of
 				// this function to keepalive
 				if !ok {
 					goto label
 				}
-				e.logger.Infof("leaseID=%0x,respLeaseID=%0x", e.leaseID, resp.ID)
 			}
 		case <-time.After(etcdBusinessTimeout):
 			{
