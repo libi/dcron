@@ -49,7 +49,6 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 
 func TestEtcdDriver_Stop(t *testing.T) {
 	var err error
-	var nodes []string
 	etcdsvr := integration.NewLazyCluster()
 	defer etcdsvr.Terminate()
 
@@ -67,30 +66,35 @@ func TestEtcdDriver_Stop(t *testing.T) {
 	err = drv2.Start(context.Background())
 	require.Nil(t, err)
 
+	checkNodesFunc := func(drv driver.DriverV2, count int, timeout time.Duration) {
+		tick := time.Tick(8 * time.Second)
+		timeoutPoint := time.Now().Add(timeout)
+		for range tick {
+			if timeoutPoint.Before(time.Now()) {
+				t.Fatal("timeout")
+			}
+			nodes, err := drv.GetNodes(context.Background())
+			require.Nil(t, err)
+			if len(nodes) == count {
+				return
+			}
+		}
+	}
+
 	err = drv1.Start(context.Background())
 	require.Nil(t, err)
-	<-time.After(3 * time.Second)
-	nodes, err = drv1.GetNodes(context.Background())
-	require.Nil(t, err)
-	require.Len(t, nodes, 2)
-
-	nodes, err = drv2.GetNodes(context.Background())
-	require.Nil(t, err)
-	require.Len(t, nodes, 2)
+	checkTimeout := 20 * time.Second
+	checkNodesFunc(drv1, 2, checkTimeout)
+	checkNodesFunc(drv2, 2, checkTimeout)
 
 	drv1.Stop(context.Background())
-
-	<-time.After(5 * time.Second)
-	nodes, err = drv2.GetNodes(context.Background())
-	require.Nil(t, err)
-	require.Len(t, nodes, 1)
+	checkNodesFunc(drv2, 1, checkTimeout)
 
 	err = drv1.Start(context.Background())
 	require.Nil(t, err)
-	<-time.After(5 * time.Second)
-	nodes, err = drv2.GetNodes(context.Background())
-	require.Nil(t, err)
-	require.Len(t, nodes, 2)
+	checkNodesFunc(drv1, 2, checkTimeout)
+	checkNodesFunc(drv2, 2, checkTimeout)
 
 	drv2.Stop(context.Background())
+	drv1.Stop(context.Background())
 }

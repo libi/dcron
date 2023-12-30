@@ -14,7 +14,7 @@ import (
 const (
 	etcdDefaultLease    = 5 // min lease time
 	etcdDialTimeout     = 3 * time.Second
-	etcdBusinessTimeout = 6 * time.Second
+	etcdBusinessTimeout = 5 * time.Second
 )
 
 type EtcdDriver struct {
@@ -140,11 +140,13 @@ func (e *EtcdDriver) revoke(ctx context.Context) {
 
 func (e *EtcdDriver) heartBeat(ctx context.Context) {
 label:
+	e.logger.Infof("start")
 	leaseCh, err := e.keepAlive(ctx, e.nodeID)
 	if err != nil {
 		e.logger.Errorf("keep alive error, %v", err)
 		return
 	}
+	e.logger.Infof("finished keepAlive")
 	for {
 		select {
 		case <-e.ctx.Done():
@@ -152,19 +154,26 @@ label:
 				e.logger.Infof("driver stopped")
 				return
 			}
-		case leaseResponse, ok := <-leaseCh:
+		case resp, ok := <-leaseCh:
 			{
-				// if lease timeout, goto top of
+				// if lease failed, goto top of
 				// this function to keepalive
 				if !ok {
-					e.logger.Warnf("lease failed, release")
 					goto label
 				}
-				if leaseResponse.ID != e.leaseID {
-					e.logger.Warnf("lease id not equal, leaseID=%d,expectedID=%d", leaseResponse.ID, e.leaseID)
-					goto label
-				}
-				e.logger.Infof("lease id: %d, TTL: %d", leaseResponse.ID, leaseResponse.TTL)
+				e.logger.Infof("leaseID=%0x,respLeaseID=%0x", e.leaseID, resp.ID)
+			}
+		case <-time.After(etcdBusinessTimeout):
+			{
+				e.logger.Errorf("ectd cli keepalive timeout")
+				return
+			}
+		case <-time.After(time.Duration(e.lease) * (time.Second) / 2):
+			{
+				// if near to nodes time,
+				// renew the lease
+				e.logger.Infof("release")
+				goto label
 			}
 		}
 	}
@@ -187,11 +196,10 @@ func (e *EtcdDriver) Start(ctx context.Context) (err error) {
 	// renew a global ctx when start every time
 	e.ctx, e.cancel = context.WithCancel(context.TODO())
 	go e.heartBeat(ctx)
-	err = e.watchService(ctx, e.serviceName)
-	if err != nil {
+	if err = e.watchService(ctx, e.serviceName); err != nil {
 		return
 	}
-	return nil
+	return
 }
 
 func (e *EtcdDriver) Stop(ctx context.Context) (err error) {
