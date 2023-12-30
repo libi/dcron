@@ -87,4 +87,5 @@ func TestRedisZSetDriver_Stop(t *testing.T) {
 	require.Len(t, nodes, 2)
 
 	drv2.Stop(context.Background())
+	drv1.Stop(context.Background())
 }
