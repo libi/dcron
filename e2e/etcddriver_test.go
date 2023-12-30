@@ -1,4 +1,4 @@
-package driver_test
+package e2e_test
 
 import (
 	"context"
@@ -93,4 +93,5 @@ func TestEtcdDriver_Stop(t *testing.T) {
 	require.Len(t, nodes, 2)
 
 	drv2.Stop(context.Background())
+	drv1.Stop(context.Background())
 }

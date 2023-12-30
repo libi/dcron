@@ -1,4 +1,4 @@
-package driver_test
+package e2e_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 

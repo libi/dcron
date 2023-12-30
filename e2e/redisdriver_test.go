@@ -1,4 +1,4 @@
-package driver_test
+package e2e_test
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
 func testFuncNewRedisDriver(addr string) driver.DriverV2 {
-	log.Println("redis=", addr)
+	log.Printf("redis=%s", addr)
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
@@ -89,4 +89,5 @@ func TestRedisDriver_Stop(t *testing.T) {
 	require.Len(t, nodes, 2)
 
 	drv2.Stop(context.Background())
+	drv1.Stop(context.Background())
 }
