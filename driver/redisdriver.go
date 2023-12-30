@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron/dlog"
-	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -114,7 +114,7 @@ func (rd *RedisDriver) heartBeat() {
 }
 
 func (rd *RedisDriver) registerServiceNode() error {
-	return rd.c.SetEx(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
+	return rd.c.SetEX(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
 }
 
 func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, error) {

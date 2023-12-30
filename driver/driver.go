@@ -3,7 +3,7 @@ package driver
 import (
 	"context"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-redis/redis/v8"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 

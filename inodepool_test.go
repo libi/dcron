@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/consistenthash"
 	"github.com/libi/dcron/driver"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
