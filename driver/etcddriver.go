@@ -140,13 +140,11 @@ func (e *EtcdDriver) revoke(ctx context.Context) {
 
 func (e *EtcdDriver) heartBeat(ctx context.Context) {
 label:
-	e.logger.Infof("start")
 	leaseCh, err := e.keepAlive(ctx, e.nodeID)
 	if err != nil {
 		e.logger.Errorf("keep alive error, %v", err)
 		return
 	}
-	e.logger.Infof("finished keepAlive")
 	for {
 		select {
 		case <-e.ctx.Done():
@@ -154,24 +152,19 @@ label:
 				e.logger.Infof("driver stopped")
 				return
 			}
-		case _, ok := <-leaseCh:
+		case leaseResponse, ok := <-leaseCh:
 			{
-				// if lease failed, goto top of
+				// if lease timeout, goto top of
 				// this function to keepalive
 				if !ok {
+					e.logger.Warnf("lease failed, release")
 					goto label
 				}
+				e.logger.Infof("lease id: %d, TTL: %d", leaseResponse.ID, leaseResponse.TTL)
 			}
 		case <-time.After(etcdBusinessTimeout):
 			{
-				e.logger.Errorf("ectd cli keepalive timeout")
-				return
-			}
-		case <-time.After(time.Duration(e.lease) * (time.Second) / 2):
-			{
-				// if near to nodes time,
-				// renew the lease
-				e.logger.Infof("release")
+				e.logger.Errorf("ectd cli keepalive timeout, release")
 				goto label
 			}
 		}
@@ -195,10 +188,11 @@ func (e *EtcdDriver) Start(ctx context.Context) (err error) {
 	// renew a global ctx when start every time
 	e.ctx, e.cancel = context.WithCancel(context.TODO())
 	go e.heartBeat(ctx)
-	if err = e.watchService(ctx, e.serviceName); err != nil {
+	err = e.watchService(ctx, e.serviceName)
+	if err != nil {
 		return
 	}
-	return
+	return nil
 }
 
 func (e *EtcdDriver) Stop(ctx context.Context) (err error) {

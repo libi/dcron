@@ -22,8 +22,9 @@ func testFuncNewEtcdDriver(cfg clientv3.Config) driver.DriverV2 {
 
 func TestEtcdDriver_GetNodes(t *testing.T) {
 	etcdsvr := integration.NewLazyCluster()
+	defer etcdsvr.Terminate()
 	N := 10
-	drvs := make([]driver.DriverV2, N)
+	drvs := make([]driver.DriverV2, 0)
 	for i := 0; i < N; i++ {
 		drv := testFuncNewEtcdDriver(clientv3.Config{
 			Endpoints:   etcdsvr.EndpointsV3(),
@@ -32,24 +33,25 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 		drv.Init(t.Name(), driver.NewTimeoutOption(5*time.Second), driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 		err := drv.Start(context.Background())
 		require.Nil(t, err)
-		drvs[i] = drv
+		drvs = append(drvs, drv)
 	}
-	<-time.After(10 * time.Second)
-	for _, drv := range drvs {
-		nodes, err := drv.GetNodes(context.Background())
+	<-time.After(5 * time.Second)
+	for _, v := range drvs {
+		nodes, err := v.GetNodes(context.Background())
 		require.Nil(t, err)
 		require.Equal(t, N, len(nodes))
 	}
 
-	for _, drv := range drvs {
-		drv.Stop(context.Background())
+	for _, v := range drvs {
+		v.Stop(context.Background())
 	}
-	etcdsvr.Terminate()
 }
 
 func TestEtcdDriver_Stop(t *testing.T) {
 	var err error
+	var nodes []string
 	etcdsvr := integration.NewLazyCluster()
+	defer etcdsvr.Terminate()
 
 	drv1 := testFuncNewEtcdDriver(clientv3.Config{
 		Endpoints:   etcdsvr.EndpointsV3(),
@@ -65,37 +67,30 @@ func TestEtcdDriver_Stop(t *testing.T) {
 	err = drv2.Start(context.Background())
 	require.Nil(t, err)
 
-	checkNodesFunc := func(drv driver.DriverV2, count int, timeout time.Duration) {
-		tick := time.Tick(5 * time.Second)
-		timeoutPoint := time.Now().Add(timeout)
-		for range tick {
-			if timeoutPoint.Before(time.Now()) {
-				t.Fatal("timeout")
-			}
-			nodes, err := drv.GetNodes(context.Background())
-			require.Nil(t, err)
-			if len(nodes) == count {
-				return
-			}
-		}
-	}
-
 	err = drv1.Start(context.Background())
 	require.Nil(t, err)
-	checkTimeout := 20 * time.Second
-	checkNodesFunc(drv1, 2, checkTimeout)
-	checkNodesFunc(drv2, 2, checkTimeout)
+	<-time.After(3 * time.Second)
+	nodes, err = drv1.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
+
+	nodes, err = drv2.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
 
 	drv1.Stop(context.Background())
-	checkNodesFunc(drv2, 1, checkTimeout)
+
+	<-time.After(5 * time.Second)
+	nodes, err = drv2.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 1)
 
 	err = drv1.Start(context.Background())
 	require.Nil(t, err)
-	checkNodesFunc(drv1, 2, checkTimeout)
-	checkNodesFunc(drv2, 2, checkTimeout)
+	<-time.After(5 * time.Second)
+	nodes, err = drv2.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
 
 	drv2.Stop(context.Background())
-	drv1.Stop(context.Background())
-
-	etcdsvr.Terminate()
 }
