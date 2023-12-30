@@ -22,7 +22,6 @@ func testFuncNewEtcdDriver(cfg clientv3.Config) driver.DriverV2 {
 
 func TestEtcdDriver_GetNodes(t *testing.T) {
 	etcdsvr := integration.NewLazyCluster()
-	defer etcdsvr.Terminate()
 	N := 10
 	drvs := make([]driver.DriverV2, N)
 	for i := 0; i < N; i++ {
@@ -35,7 +34,7 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 		require.Nil(t, err)
 		drvs[i] = drv
 	}
-	<-time.After(5 * time.Second)
+	<-time.After(10 * time.Second)
 	for _, drv := range drvs {
 		nodes, err := drv.GetNodes(context.Background())
 		require.Nil(t, err)
@@ -45,12 +44,12 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 	for _, drv := range drvs {
 		drv.Stop(context.Background())
 	}
+	etcdsvr.Terminate()
 }
 
 func TestEtcdDriver_Stop(t *testing.T) {
 	var err error
 	etcdsvr := integration.NewLazyCluster()
-	defer etcdsvr.Terminate()
 
 	drv1 := testFuncNewEtcdDriver(clientv3.Config{
 		Endpoints:   etcdsvr.EndpointsV3(),
@@ -67,7 +66,7 @@ func TestEtcdDriver_Stop(t *testing.T) {
 	require.Nil(t, err)
 
 	checkNodesFunc := func(drv driver.DriverV2, count int, timeout time.Duration) {
-		tick := time.Tick(8 * time.Second)
+		tick := time.Tick(5 * time.Second)
 		timeoutPoint := time.Now().Add(timeout)
 		for range tick {
 			if timeoutPoint.Before(time.Now()) {
@@ -97,4 +96,6 @@ func TestEtcdDriver_Stop(t *testing.T) {
 
 	drv2.Stop(context.Background())
 	drv1.Stop(context.Background())
+
+	etcdsvr.Terminate()
 }
