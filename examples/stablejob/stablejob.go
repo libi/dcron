@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 	examplesCommon "github.com/libi/dcron/examples/common"
+	"github.com/redis/go-redis/v9"
 )
 
 type EnvConfig struct {
