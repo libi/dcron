@@ -14,7 +14,7 @@ import (
 const (
 	etcdDefaultLease    = 5 // min lease time
 	etcdDialTimeout     = 3 * time.Second
-	etcdBusinessTimeout = 5 * time.Second
+	etcdBusinessTimeout = 6 * time.Second
 )
 
 type EtcdDriver struct {
@@ -160,12 +160,11 @@ label:
 					e.logger.Warnf("lease failed, release")
 					goto label
 				}
+				if leaseResponse.ID != e.leaseID {
+					e.logger.Warnf("lease id not equal, leaseID=%d,expectedID=%d", leaseResponse.ID, e.leaseID)
+					goto label
+				}
 				e.logger.Infof("lease id: %d, TTL: %d", leaseResponse.ID, leaseResponse.TTL)
-			}
-		case <-time.After(etcdBusinessTimeout):
-			{
-				e.logger.Errorf("ectd cli keepalive timeout, release")
-				goto label
 			}
 		}
 	}

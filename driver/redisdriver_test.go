@@ -14,7 +14,7 @@ import (
 )
 
 func testFuncNewRedisDriver(addr string) driver.DriverV2 {
-	log.Println("redis=", addr)
+	log.Printf("redis=%s", addr)
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})

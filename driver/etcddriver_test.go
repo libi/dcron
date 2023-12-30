@@ -24,7 +24,7 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 	etcdsvr := integration.NewLazyCluster()
 	defer etcdsvr.Terminate()
 	N := 10
-	drvs := make([]driver.DriverV2, 0)
+	drvs := make([]driver.DriverV2, N)
 	for i := 0; i < N; i++ {
 		drv := testFuncNewEtcdDriver(clientv3.Config{
 			Endpoints:   etcdsvr.EndpointsV3(),
@@ -33,17 +33,17 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 		drv.Init(t.Name(), driver.NewTimeoutOption(5*time.Second), driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 		err := drv.Start(context.Background())
 		require.Nil(t, err)
-		drvs = append(drvs, drv)
+		drvs[i] = drv
 	}
 	<-time.After(5 * time.Second)
-	for _, v := range drvs {
-		nodes, err := v.GetNodes(context.Background())
+	for _, drv := range drvs {
+		nodes, err := drv.GetNodes(context.Background())
 		require.Nil(t, err)
 		require.Equal(t, N, len(nodes))
 	}
 
-	for _, v := range drvs {
-		v.Stop(context.Background())
+	for _, drv := range drvs {
+		drv.Stop(context.Background())
 	}
 }
 
