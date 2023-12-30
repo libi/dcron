@@ -140,6 +140,7 @@ func (e *EtcdDriver) revoke(ctx context.Context) {
 }
 
 func (e *EtcdDriver) heartBeat(ctx context.Context) {
+label:
 	leaseCh, err := e.createLease(ctx, e.nodeID)
 	if err != nil {
 		e.logger.Errorf("keep alive error, %v", err)
@@ -152,10 +153,15 @@ func (e *EtcdDriver) heartBeat(ctx context.Context) {
 				e.logger.Infof("driver stopped")
 				return
 			}
-		case resp := <-leaseCh:
+		case resp, ok := <-leaseCh:
 			{
 				// if lease timeout, goto top of
 				// this function to keepalive
+				if !ok {
+					e.logger.Errorf("extend lease error, release")
+					goto label
+				}
+
 				e.logger.Infof("leaseID=%0x", resp.ID)
 			}
 		}
