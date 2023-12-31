@@ -21,11 +21,13 @@ type EtcdDriver struct {
 	nodeID      string
 	serviceName string
 
-	cli     *clientv3.Client
+	cli    *clientv3.Client
+	nodes  *sync.Map
+	logger dlog.Logger
+
 	lease   int64
-	nodes   *sync.Map
 	leaseID clientv3.LeaseID
-	logger  dlog.Logger
+	leaseCh <-chan *clientv3.LeaseKeepAliveResponse
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -91,9 +93,11 @@ func (e *EtcdDriver) watcher(serviceName string) {
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch ev.Type {
-			case mvccpb.PUT: //修改或者新增
+			case mvccpb.PUT:
+				// 修改或者新增
 				e.setServiceList(string(ev.Kv.Key), string(ev.Kv.Value))
-			case mvccpb.DELETE: //删除
+			case mvccpb.DELETE:
+				// 删除
 				e.delServiceList(string(ev.Kv.Key))
 			}
 		}
@@ -138,38 +142,58 @@ func (e *EtcdDriver) revoke(ctx context.Context) {
 	}
 }
 
-func (e *EtcdDriver) heartBeat(ctx context.Context) {
-label:
-	leaseCh, err := e.keepAlive(ctx, e.nodeID)
+func (e *EtcdDriver) startHeartBeat(ctx context.Context) {
+	var err error
+	e.leaseCh, err = e.keepAlive(ctx, e.nodeID)
 	if err != nil {
 		e.logger.Errorf("keep alive error, %v", err)
 		return
 	}
+	// for {
+	// 	select {
+	// 	case <-e.ctx.Done():
+	// 		{
+	// 			e.logger.Infof("driver stopped")
+	// 			return
+	// 		}
+	// 	case _, ok := <-leaseCh:
+	// 		{
+	// 			// if lease timeout, goto top of
+	// 			// this function to keepalive
+	// 			if !ok {
+	// 				goto label
+	// 			}
+	// 		}
+	// 	case <-time.After(etcdBusinessTimeout):
+	// 		{
+	// 			e.logger.Errorf("ectd cli keepalive timeout")
+	// 			return
+	// 		}
+	// 	case <-time.After(time.Duration(e.lease) * (time.Second) / 2):
+	// 		{
+	// 			// if near to nodes time,
+	// 			// renew the lease
+	// 			e.logger.Errorf("renew lease due to heartbeat ended.")
+	// 			goto label
+	// 		}
+	// 	}
+	// }
+}
+
+func (e *EtcdDriver) keepHeartBeat() {
 	for {
 		select {
 		case <-e.ctx.Done():
 			{
-				e.logger.Infof("driver stopped")
+				e.logger.Warnf("driver stopped")
 				return
 			}
-		case _, ok := <-leaseCh:
+		case _, ok := <-e.leaseCh:
 			{
-				// if lease timeout, goto top of
-				// this function to keepalive
 				if !ok {
-					goto label
+					e.logger.Warnf("lease channel stop, driver stopped")
+					return
 				}
-			}
-		case <-time.After(etcdBusinessTimeout):
-			{
-				e.logger.Errorf("ectd cli keepalive timeout")
-				return
-			}
-		case <-time.After(time.Duration(e.lease/2) * (time.Second)):
-			{
-				// if near to nodes time,
-				// renew the lease
-				goto label
 			}
 		}
 	}
@@ -191,12 +215,13 @@ func (e *EtcdDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 func (e *EtcdDriver) Start(ctx context.Context) (err error) {
 	// renew a global ctx when start every time
 	e.ctx, e.cancel = context.WithCancel(context.TODO())
-	go e.heartBeat(ctx)
+	e.startHeartBeat(ctx)
 	err = e.watchService(ctx, e.serviceName)
 	if err != nil {
 		return
 	}
-	return nil
+	go e.keepHeartBeat()
+	return
 }
 
 func (e *EtcdDriver) Stop(ctx context.Context) (err error) {

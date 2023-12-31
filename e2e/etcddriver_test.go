@@ -35,7 +35,7 @@ func TestEtcdDriver_GetNodes(t *testing.T) {
 		require.Nil(t, err)
 		drvs = append(drvs, drv)
 	}
-	<-time.After(5 * time.Second)
+	<-time.After(15 * time.Second)
 	for _, v := range drvs {
 		nodes, err := v.GetNodes(context.Background())
 		require.Nil(t, err)
@@ -80,15 +80,18 @@ func TestEtcdDriver_Stop(t *testing.T) {
 
 	drv1.Stop(context.Background())
 
-	<-time.After(5 * time.Second)
+	<-time.After(15 * time.Second)
 	nodes, err = drv2.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 1)
 
 	err = drv1.Start(context.Background())
 	require.Nil(t, err)
-	<-time.After(5 * time.Second)
+	<-time.After(15 * time.Second)
 	nodes, err = drv2.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
+	nodes, err = drv1.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 2)
 

@@ -57,7 +57,8 @@ func NewPrintfLoggerFromLogfLogger(logger LogfLogger) PrintfLogger {
 
 func NewLoggerForTest(t *testing.T) Logger {
 	return &StdLogger{
-		Log: NewPrintfLoggerFromLogfLogger(t),
+		Log:        NewPrintfLoggerFromLogfLogger(t),
+		LogVerbose: true,
 	}
 }
 
