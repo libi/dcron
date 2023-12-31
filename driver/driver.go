@@ -18,7 +18,13 @@ type DriverV2 interface {
 	NodeID() string
 	// get nodes
 	GetNodes(ctx context.Context) (nodes []string, err error)
+
+	// register node to remote server (like etcd/redis),
+	// will create a goroutine to keep the connection.
+	// And then continue for other work.
 	Start(ctx context.Context) (err error)
+
+	// stop the goroutine of keep connection.
 	Stop(ctx context.Context) (err error)
 
 	withOption(opt Option) (err error)
