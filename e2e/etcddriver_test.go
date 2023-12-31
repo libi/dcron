@@ -64,11 +64,9 @@ func TestEtcdDriver_Stop(t *testing.T) {
 		DialTimeout: 3 * time.Second,
 	})
 	drv2.Init(t.Name(), driver.NewTimeoutOption(5*time.Second), driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
-	err = drv2.Start(context.Background())
-	require.Nil(t, err)
+	require.Nil(t, drv2.Start(context.Background()))
+	require.Nil(t, drv1.Start(context.Background()))
 
-	err = drv1.Start(context.Background())
-	require.Nil(t, err)
 	<-time.After(3 * time.Second)
 	nodes, err = drv1.GetNodes(context.Background())
 	require.Nil(t, err)

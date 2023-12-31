@@ -149,35 +149,6 @@ func (e *EtcdDriver) startHeartBeat(ctx context.Context) {
 		e.logger.Errorf("keep alive error, %v", err)
 		return
 	}
-	// for {
-	// 	select {
-	// 	case <-e.ctx.Done():
-	// 		{
-	// 			e.logger.Infof("driver stopped")
-	// 			return
-	// 		}
-	// 	case _, ok := <-leaseCh:
-	// 		{
-	// 			// if lease timeout, goto top of
-	// 			// this function to keepalive
-	// 			if !ok {
-	// 				goto label
-	// 			}
-	// 		}
-	// 	case <-time.After(etcdBusinessTimeout):
-	// 		{
-	// 			e.logger.Errorf("ectd cli keepalive timeout")
-	// 			return
-	// 		}
-	// 	case <-time.After(time.Duration(e.lease) * (time.Second) / 2):
-	// 		{
-	// 			// if near to nodes time,
-	// 			// renew the lease
-	// 			e.logger.Errorf("renew lease due to heartbeat ended.")
-	// 			goto label
-	// 		}
-	// 	}
-	// }
 }
 
 func (e *EtcdDriver) keepHeartBeat() {
