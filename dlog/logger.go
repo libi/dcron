@@ -57,18 +57,22 @@ func NewPrintfLoggerFromLogfLogger(logger LogfLogger) PrintfLogger {
 
 func NewLoggerForTest(t *testing.T) Logger {
 	return &StdLogger{
-		Log: NewPrintfLoggerFromLogfLogger(t),
+		Log:        NewPrintfLoggerFromLogfLogger(t),
+		LogVerbose: true,
 	}
 }
 
+// 这个方法会打印出所有的WARN level以上的LOG
 func WarnPrintfLogger(l PrintfLogger) Logger {
 	return &StdLogger{Log: l, LogVerbose: false}
 }
 
+// 这个方法会打印出所有的INFO level的LOG
 func VerbosePrintfLogger(l PrintfLogger) Logger {
 	return &StdLogger{Log: l, LogVerbose: true}
 }
 
+// 默认的Logger构造函数，会打印出所有WARN level以上的LOG
 func DefaultPrintfLogger(l PrintfLogger) Logger {
 	return WarnPrintfLogger(l)
 }

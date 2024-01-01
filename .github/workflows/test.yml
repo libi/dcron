@@ -12,7 +12,11 @@ jobs:
     name: Test on go ${{ matrix.go_version }}
     strategy:
       matrix:
-        go_version: ["1.19", "1.20", "1.21"]
+        go_version: [
+          "1.19",
+          "1.20",
+          "1.21",
+        ]
     runs-on: ubuntu-latest
 
     steps:
@@ -26,4 +30,7 @@ jobs:
         go-version: ${{ matrix.go_version }}
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v $(go list ./... | grep -v github.com/libi/dcron/e2e)
+
+    - name: Test E2E
+      run: go test -v ./e2e

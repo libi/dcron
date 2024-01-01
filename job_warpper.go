@@ -23,7 +23,6 @@ type JobWarpper struct {
 	Dcron   *Dcron
 	Name    string
 	CronStr string
-	Func    func()
 	Job     Job
 }
 
@@ -36,9 +35,6 @@ func (job JobWarpper) Run() {
 }
 
 func (job JobWarpper) Execute() {
-	if job.Func != nil {
-		job.Func()
-	}
 	if job.Job != nil {
 		job.Job.Run()
 	}

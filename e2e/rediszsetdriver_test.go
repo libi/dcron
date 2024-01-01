@@ -1,4 +1,4 @@
-package driver_test
+package e2e_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,11 +58,9 @@ func TestRedisZSetDriver_Stop(t *testing.T) {
 	drv2.Init(t.Name(),
 		driver.NewTimeoutOption(5*time.Second),
 		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
-	err = drv2.Start(context.Background())
-	require.Nil(t, err)
 
-	err = drv1.Start(context.Background())
-	require.Nil(t, err)
+	require.Nil(t, drv2.Start(context.Background()))
+	require.Nil(t, drv1.Start(context.Background()))
 
 	nodes, err = drv1.GetNodes(context.Background())
 	require.Nil(t, err)
@@ -85,6 +83,10 @@ func TestRedisZSetDriver_Stop(t *testing.T) {
 	nodes, err = drv2.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 2)
+	nodes, err = drv1.GetNodes(context.Background())
+	require.Nil(t, err)
+	require.Len(t, nodes, 2)
 
 	drv2.Stop(context.Background())
+	drv1.Stop(context.Background())
 }
