@@ -1,4 +1,4 @@
-package e2e_test
+package driver_test
 
 import (
 	"context"
