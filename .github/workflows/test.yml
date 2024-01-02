@@ -30,10 +30,7 @@ jobs:
         go-version: ${{ matrix.go_version }}
 
     - name: Test
-      run: go test -v -coverprofile=normal-coverage.txt -covermode=atomic $(go list ./... | grep -v github.com/libi/dcron/e2e)
-
-    - name: Test E2E
-      run: go test -v -coverprofile=e2e-coverage.txt -covermode=atomic ./e2e
+      run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
