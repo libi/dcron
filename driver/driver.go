@@ -3,7 +3,7 @@ package driver
 import (
 	"context"
 
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -18,7 +18,13 @@ type DriverV2 interface {
 	NodeID() string
 	// get nodes
 	GetNodes(ctx context.Context) (nodes []string, err error)
+
+	// register node to remote server (like etcd/redis),
+	// will create a goroutine to keep the connection.
+	// And then continue for other work.
 	Start(ctx context.Context) (err error)
+
+	// stop the goroutine of keep connection.
 	Stop(ctx context.Context) (err error)
 
 	withOption(opt Option) (err error)

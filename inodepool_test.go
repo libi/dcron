@@ -47,6 +47,12 @@ func (ts *TestINodePoolSuite) setUpEtcd() {
 	ts.etcdsvr = integration.NewLazyCluster()
 }
 
+func (ts *TestINodePoolSuite) stopAllNodePools(nodePools []dcron.INodePool) {
+	for _, nodePool := range nodePools {
+		nodePool.Stop(context.Background())
+	}
+}
+
 func (ts *TestINodePoolSuite) declareRedisDrivers(clients *[]*redis.Client, drivers *[]driver.DriverV2, numberOfNodes int) {
 	for i := 0; i < numberOfNodes; i++ {
 		*clients = append(*clients, redis.NewClient(&redis.Options{
@@ -116,6 +122,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedis() {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
 	}
 	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+	ts.stopAllNodePools(nodePools)
 }
 
 func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
@@ -134,6 +141,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
 	}
 	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+	ts.stopAllNodePools(nodePools)
 }
 
 func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
@@ -152,6 +160,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
 	}
 	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+	ts.stopAllNodePools(nodePools)
 }
 
 func TestTestINodePoolSuite(t *testing.T) {

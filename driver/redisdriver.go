@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/libi/dcron/dlog"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 )
 
 const (
@@ -25,7 +25,7 @@ type RedisDriver struct {
 	started     bool
 
 	// this context is used to define
-	// the life time of this driver.
+	// the lifetime of this driver.
 	runtimeCtx    context.Context
 	runtimeCancel context.CancelFunc
 

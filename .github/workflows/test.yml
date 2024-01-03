@@ -12,22 +12,28 @@ jobs:
     name: Test on go ${{ matrix.go_version }}
     strategy:
       matrix:
-        go_version: ["1.19", "1.20", "1.21"]
+        go_version: [
+          "1.19",
+          "1.20",
+          "1.21",
+        ]
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Redis Server in GitHub Actions
-      uses: supercharge/redis-github-action@1.4.0
+      uses: supercharge/redis-github-action@1.7.0
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go_version }}
 
     - name: Test
-      run: go test -coverprofile=coverage.txt -covermode=atomic -v ./... 
+      run: go test -v -timeout 30m -coverprofile=coverage.txt -covermode=atomic ./...
+
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+

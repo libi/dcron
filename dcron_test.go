@@ -1,18 +1,18 @@
 package dcron_test
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/libi/dcron"
+	"github.com/libi/dcron/cron"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 	"github.com/redis/go-redis/v9"
-	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,75 +20,111 @@ const (
 	DefaultRedisAddr = "127.0.0.1:6379"
 )
 
-type TestJob1 struct {
+type TestJobWithWG struct {
 	Name string
+	WG   *sync.WaitGroup
+	Test *testing.T
+	Cnt  *atomic.Int32
 }
 
-func (t TestJob1) Run() {
-	fmt.Println("执行 testjob ", t.Name, time.Now().Format("15:04:05"))
+func (job *TestJobWithWG) Run() {
+	job.Test.Logf("jobName=[%s], time=%s, job rest count=%d",
+		job.Name,
+		time.Now().Format("15:04:05"),
+		job.Cnt.Load(),
+	)
+	if job.Cnt.Load() == 0 {
+		return
+	} else {
+		job.Cnt.Store(job.Cnt.Add(-1))
+		if job.Cnt.Load() == 0 {
+			job.WG.Done()
+		}
+	}
 }
-
-var testData = make(map[string]struct{})
 
 func TestMultiNodes(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
+	testJobWGs := make([]*sync.WaitGroup, 0)
+	testJobWGs = append(testJobWGs, &sync.WaitGroup{})
+	testJobWGs = append(testJobWGs, &sync.WaitGroup{})
+	testJobWGs = append(testJobWGs, &sync.WaitGroup{})
+	testJobWGs[0].Add(1)
+	testJobWGs[1].Add(1)
 
-	go runNode(t, wg)
+	testJobs := make([]*TestJobWithWG, 0)
+	testJobs = append(
+		testJobs,
+		&TestJobWithWG{
+			Name: "s1_test1",
+			WG:   testJobWGs[0],
+			Test: t,
+			Cnt:  &atomic.Int32{},
+		},
+		&TestJobWithWG{
+			Name: "s1_test2",
+			WG:   testJobWGs[1],
+			Test: t,
+			Cnt:  &atomic.Int32{},
+		},
+		&TestJobWithWG{
+			Name: "s1_test3",
+			WG:   testJobWGs[2],
+			Test: t,
+			Cnt:  &atomic.Int32{},
+		})
+	testJobs[0].Cnt.Store(5)
+	testJobs[1].Cnt.Store(5)
+
+	nodeCancel := make([](chan int), 3)
+	nodeCancel[0] = make(chan int, 1)
+	nodeCancel[1] = make(chan int, 1)
+	nodeCancel[2] = make(chan int, 1)
+
 	// 间隔1秒启动测试节点刷新逻辑
-	time.Sleep(time.Second)
-	go runNode(t, wg)
-	time.Sleep(time.Second)
-	go runNode(t, wg)
+	go runNode(t, wg, testJobs, nodeCancel[0])
+	<-time.After(time.Second)
+	go runNode(t, wg, testJobs, nodeCancel[1])
+	<-time.After(time.Second)
+	go runNode(t, wg, testJobs, nodeCancel[2])
+
+	testJobWGs[0].Wait()
+	testJobWGs[1].Wait()
+
+	close(nodeCancel[0])
+	close(nodeCancel[1])
+	close(nodeCancel[2])
 
 	wg.Wait()
 }
 
-func runNode(t *testing.T, wg *sync.WaitGroup) {
+func runNode(t *testing.T, wg *sync.WaitGroup, testJobs []*TestJobWithWG, cancel chan int) {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: DefaultRedisAddr,
 	})
 	drv := driver.NewRedisDriver(redisCli)
-	dcron := dcron.NewDcron("server1", drv)
-	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
+	dcron := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.WithLogger(
+			dlog.DefaultPrintfLogger(
+				log.New(os.Stdout, "", log.LstdFlags))))
+	// 添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
-	err := dcron.AddFunc("s1 test1", "* * * * *", func() {
-		// 同时启动3个节点 但是一个 job 同一时间只会执行一次 通过 map 判重
-		key := "s1 test1 : " + time.Now().Format("15:04")
-		if _, ok := testData[key]; ok {
-			t.Error("job have running in other node")
+	var err error
+	for _, job := range testJobs {
+		if err = dcron.AddJob(job.Name, "* * * * *", job); err != nil {
+			t.Error("add job error")
 		}
-		testData[key] = struct{}{}
-	})
-	if err != nil {
-		t.Error("add func error")
-	}
-	err = dcron.AddFunc("s1 test2", "* * * * *", func() {
-		t.Log("执行 service1 test2 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Error("add func error")
 	}
 
-	testJob := TestJob1{"addtestjob"}
-	err = dcron.AddJob("addtestjob1", "* * * * *", testJob)
-	if err != nil {
-		t.Error("add func error")
-	}
-
-	err = dcron.AddFunc("s1 test3", "* * * * *", func() {
-		t.Log("执行 service1 test3 任务", time.Now().Format("15:04:05"))
-	})
-	if err != nil {
-		t.Error("add func error")
-	}
 	dcron.Start()
-
 	//移除测试
-	dcron.Remove("s1 test3")
-	<-time.After(120 * time.Second)
-	wg.Done()
+	dcron.Remove(testJobs[2].Name)
+	<-cancel
 	dcron.Stop()
+	wg.Done()
 }
 
 func Test_SecondsJob(t *testing.T) {
@@ -115,9 +151,9 @@ func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *
 	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv,
 		dcron.CronOptionSeconds(),
-		dcron.WithLogger(&dlog.StdLogger{
-			Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
-		}),
+		dcron.WithLogger(dlog.DefaultPrintfLogger(
+			log.New(os.Stdout, "["+id+"]", log.LstdFlags),
+		)),
 		dcron.CronOptionChain(cron.Recover(
 			cron.DefaultLogger,
 		)),
@@ -146,15 +182,13 @@ func runSecondNodeWithLogger(id string, wg *sync.WaitGroup, runningTime time.Dur
 		Addr: DefaultRedisAddr,
 	})
 	drv := driver.NewRedisDriver(redisCli)
-	dcr := dcron.NewDcronWithOption(t.Name(), drv,
-		// must use `WithPrintLogInfo` before `WithLogger`
-		// because we need to set up `cron` log level, it depends
-		// on ths value of this configuration.
-		dcron.WithPrintLogInfo(),
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
 		dcron.CronOptionSeconds(),
-		dcron.WithLogger(&dlog.StdLogger{
-			Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
-		}),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.New(os.Stdout, "["+id+"]", log.LstdFlags),
+		)),
 		dcron.CronOptionChain(cron.Recover(
 			cron.DefaultLogger,
 		)),
@@ -209,9 +243,9 @@ func Test_WithClusterStableNodes(t *testing.T) {
 		drv := driver.NewRedisDriver(redisCli)
 		dcr := dcron.NewDcronWithOption(t.Name(), drv,
 			dcron.CronOptionSeconds(),
-			dcron.WithLogger(&dlog.StdLogger{
-				Log: log.New(os.Stdout, "["+id+"]", log.LstdFlags),
-			}),
+			dcron.WithLogger(dlog.DefaultPrintfLogger(
+				log.New(os.Stdout, "["+id+"]", log.LstdFlags)),
+			),
 			dcron.WithClusterStable(timeWindow),
 			dcron.WithNodeUpdateDuration(timeWindow),
 		)

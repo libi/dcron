@@ -21,7 +21,7 @@ type RedisZSetDriver struct {
 	started     bool
 
 	// this context is used to define
-	// the life time of this driver.
+	// the lifetime of this driver.
 	runtimeCtx    context.Context
 	runtimeCancel context.CancelFunc
 
