@@ -3,7 +3,7 @@ package driver
 import (
 	"context"
 
-	redis "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -30,7 +30,7 @@ type DriverV2 interface {
 	withOption(opt Option) (err error)
 }
 
-func NewRedisDriver(redisClient *redis.Client) DriverV2 {
+func NewRedisDriver(redisClient redis.UniversalClient) DriverV2 {
 	return newRedisDriver(redisClient)
 }
 
@@ -38,6 +38,6 @@ func NewEtcdDriver(etcdCli *clientv3.Client) DriverV2 {
 	return newEtcdDriver(etcdCli)
 }
 
-func NewRedisZSetDriver(redisClient *redis.Client) DriverV2 {
+func NewRedisZSetDriver(redisClient redis.UniversalClient) DriverV2 {
 	return newRedisZSetDriver(redisClient)
 }
