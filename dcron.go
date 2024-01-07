@@ -138,6 +138,28 @@ func (d *Dcron) Remove(jobName string) {
 	}
 }
 
+// Get job by jobName
+// if this jobName not exist, will return error.
+//
+//	if `thisNodeOnly` is true
+//		if this job is not available in this node, will return error.
+//	otherwise return the struct of JobWarpper whose name is jobName.
+func (d *Dcron) GetJob(jobName string, thisNodeOnly bool) (*JobWarpper, error) {
+	panic("not implemented")
+}
+
+// Get job list.
+//
+//	if `thisNodeOnly` is true
+//		return all jobs available in this node.
+//	otherwise return all jobs added to dcron.
+//
+// we never return nil. If there is no job.
+// this func will return an empty slice.
+func (d *Dcron) GetJobs(thisNodeOnly bool) []*JobWarpper {
+	panic("not implemented")
+}
+
 func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
 	ok, err := d.nodePool.CheckJobAvailable(jobName)
 	if err != nil {
