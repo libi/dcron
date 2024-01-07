@@ -1,6 +1,7 @@
 Dcron
 ==============
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
+[![codecov](https://codecov.io/gh/libi/dcron/graph/badge.svg?token=TBW1NN43AZ)](https://codecov.io/gh/libi/dcron)
 [![Tests](https://github.com/libi/dcron/actions/workflows/test.yml/badge.svg)](https://github.com/libi/dcron/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/libi/dcron#1)](https://goreportcard.com/report/github.com/libi/dcron)
 

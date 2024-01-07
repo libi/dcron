@@ -21,16 +21,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Redis Server in GitHub Actions
-      uses: supercharge/redis-github-action@1.4.0
+      uses: supercharge/redis-github-action@1.7.0
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go_version }}
 
     - name: Test
-      run: go test -v $(go list ./... | grep -v github.com/libi/dcron/e2e)
+      run: go test -v -timeout 30m -coverprofile=coverage.txt -covermode=atomic ./...
 
-    - name: Test E2E
-      run: go test -v ./e2e
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+

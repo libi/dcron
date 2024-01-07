@@ -1,8 +1,7 @@
-package e2e_test
+package driver_test
 
 import (
 	"context"
-	"log"
 	"testing"
 	"time"
 
@@ -13,20 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testFuncNewRedisDriver(addr string) driver.DriverV2 {
-	log.Printf("redis=%s", addr)
+func testFuncNewRedisZSetDriver(addr string) driver.DriverV2 {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
-	return driver.NewRedisDriver(redisCli)
+	return driver.NewRedisZSetDriver(redisCli)
 }
 
-func TestRedisDriver_GetNodes(t *testing.T) {
+func TestRedisZSetDriver_GetNodes(t *testing.T) {
 	rds := miniredis.RunT(t)
 	drvs := make([]driver.DriverV2, 0)
 	N := 10
 	for i := 0; i < N; i++ {
-		drv := testFuncNewRedisDriver(rds.Addr())
+		drv := testFuncNewRedisZSetDriver(rds.Addr())
 		drv.Init(
 			t.Name(),
 			driver.NewTimeoutOption(5*time.Second),
@@ -47,16 +45,16 @@ func TestRedisDriver_GetNodes(t *testing.T) {
 	}
 }
 
-func TestRedisDriver_Stop(t *testing.T) {
+func TestRedisZSetDriver_Stop(t *testing.T) {
 	var err error
 	var nodes []string
 	rds := miniredis.RunT(t)
-	drv1 := testFuncNewRedisDriver(rds.Addr())
+	drv1 := testFuncNewRedisZSetDriver(rds.Addr())
 	drv1.Init(t.Name(),
 		driver.NewTimeoutOption(5*time.Second),
 		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
 
-	drv2 := testFuncNewRedisDriver(rds.Addr())
+	drv2 := testFuncNewRedisZSetDriver(rds.Addr())
 	drv2.Init(t.Name(),
 		driver.NewTimeoutOption(5*time.Second),
 		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
@@ -74,7 +72,7 @@ func TestRedisDriver_Stop(t *testing.T) {
 
 	drv1.Stop(context.Background())
 
-	<-time.After(5 * time.Second)
+	<-time.After(6 * time.Second)
 	nodes, err = drv2.GetNodes(context.Background())
 	require.Nil(t, err)
 	require.Len(t, nodes, 1)
