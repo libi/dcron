@@ -1,6 +1,7 @@
 package dcron_test
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -284,4 +286,51 @@ func Test_SecondJobLog_Issue68(t *testing.T) {
 	go runSecondNodeWithLogger("4", wg, 45*time.Second, t)
 	go runSecondNodeWithLogger("5", wg, 45*time.Second, t)
 	wg.Wait()
+}
+
+type testGetJob struct {
+	Called bool
+	Name   string
+}
+
+func (job *testGetJob) Run() {
+	job.Called = true
+}
+
+func Test_GetJobs_ThisNodeOnlyFalse(t *testing.T) {
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: DefaultRedisAddr,
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+
+	jobs := dcr.GetJobs(false)
+	assert.Len(t, jobs, n)
+	for _, job := range jobs {
+		job.Job.Run()
+	}
+	for _, job := range jobs {
+		assert.Equal(t, job.Name, job.Job.(*testGetJob).Name)
+		assert.True(t, job.Job.(*testGetJob).Called)
+	}
+}
+
+func Test_GetJobs_ThisNodeOnlyTrue(t *testing.T) {
+
 }

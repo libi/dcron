@@ -25,12 +25,18 @@ const (
 	dcronStateUpgrade = "dcronStateUpgrade"
 )
 
+var (
+	ErrJobExist     = errors.New("jobName already exist")
+	ErrJobNotExist  = errors.New("jobName not exist")
+	ErrJobWrongNode = errors.New("job is not running in this node")
+)
+
 type RecoverFuncType func(d *Dcron)
 
 // Dcron is main struct
 type Dcron struct {
 	jobs      map[string]*JobWarpper
-	jobsRWMut sync.Mutex
+	jobsRWMut sync.RWMutex
 
 	ServerName string
 	nodePool   INodePool
@@ -110,7 +116,7 @@ func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 	d.jobsRWMut.Lock()
 	defer d.jobsRWMut.Unlock()
 	if _, ok := d.jobs[jobName]; ok {
-		return errors.New("jobName already exist")
+		return ErrJobExist
 	}
 	innerJob := JobWarpper{
 		Name:    jobName,
@@ -127,7 +133,7 @@ func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 	return nil
 }
 
-// Remove Job
+// Remove Job by jobName
 func (d *Dcron) Remove(jobName string) {
 	d.jobsRWMut.Lock()
 	defer d.jobsRWMut.Unlock()
@@ -145,7 +151,25 @@ func (d *Dcron) Remove(jobName string) {
 //		if this job is not available in this node, will return error.
 //	otherwise return the struct of JobWarpper whose name is jobName.
 func (d *Dcron) GetJob(jobName string, thisNodeOnly bool) (*JobWarpper, error) {
-	panic("not implemented")
+	d.jobsRWMut.RLock()
+	defer d.jobsRWMut.RUnlock()
+
+	job, ok := d.jobs[jobName]
+	if !ok {
+		d.logger.Warnf("job: %s, not exist", jobName)
+		return nil, ErrJobNotExist
+	}
+	if !thisNodeOnly {
+		return job, nil
+	}
+	isRunningHere, err := d.nodePool.CheckJobAvailable(jobName)
+	if err != nil {
+		return nil, err
+	}
+	if isRunningHere {
+		return nil, ErrJobWrongNode
+	}
+	return job, nil
 }
 
 // Get job list.
@@ -157,7 +181,28 @@ func (d *Dcron) GetJob(jobName string, thisNodeOnly bool) (*JobWarpper, error) {
 // we never return nil. If there is no job.
 // this func will return an empty slice.
 func (d *Dcron) GetJobs(thisNodeOnly bool) []*JobWarpper {
-	panic("not implemented")
+	d.jobsRWMut.RLock()
+	defer d.jobsRWMut.RUnlock()
+
+	ret := make([]*JobWarpper, 0)
+	for _, v := range d.jobs {
+		var (
+			isRunningHere bool
+			ok            bool = true
+			err           error
+		)
+		if thisNodeOnly {
+			isRunningHere, err = d.nodePool.CheckJobAvailable(v.Name)
+			if err != nil {
+				continue
+			}
+			ok = isRunningHere
+		}
+		if ok {
+			ret = append(ret, v)
+		}
+	}
+	return ret
 }
 
 func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
