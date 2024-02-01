@@ -186,20 +186,20 @@ func TestChainSkipIfStillRunning(t *testing.T) {
 		wrappedJob := NewChain(SkipIfStillRunning(DiscardLogger)).Then(&j)
 		go func() {
 			go wrappedJob.Run()
-			time.Sleep(time.Millisecond)
+			<-time.After(time.Millisecond)
 			go wrappedJob.Run()
 		}()
 
 		// After 5ms, the first job is still in progress, and the second job was
 		// aleady skipped.
-		time.Sleep(5 * time.Millisecond)
+		<-time.After(5 * time.Millisecond)
 		started, done := j.Started(), j.Done()
 		if started != 1 || done != 0 {
 			t.Error("expected first job started, but not finished, got", started, done)
 		}
 
 		// Verify that the first job completes and second does not run.
-		time.Sleep(25 * time.Millisecond)
+		<-time.After(25 * time.Millisecond)
 		started, done = j.Started(), j.Done()
 		if started != 1 || done != 1 {
 			t.Error("expected second job skipped, got", started, done)

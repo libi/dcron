@@ -54,6 +54,8 @@ type Dcron struct {
 
 	recentJobs IRecentJobPacker
 	state      atomic.Value
+
+	runningLocally bool
 }
 
 // NewDcron create a Dcron
@@ -74,7 +76,9 @@ func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...
 	}
 
 	dcron.cr = cron.New(dcron.crOptions...)
-	dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
+	if !dcron.runningLocally {
+		dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
+	}
 	return dcron
 }
 
@@ -206,6 +210,9 @@ func (d *Dcron) GetJobs(thisNodeOnly bool) []*JobWarpper {
 }
 
 func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
+	if d.runningLocally {
+		return true
+	}
 	ok, err := d.nodePool.CheckJobAvailable(jobName)
 	if err != nil {
 		d.logger.Errorf("allow this node run error, err=%v", err)

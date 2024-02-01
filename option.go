@@ -81,3 +81,9 @@ func WithClusterStable(timeWindow time.Duration) Option {
 		d.recentJobs = NewRecentJobPacker(timeWindow)
 	}
 }
+
+func RunningLocally() Option {
+	return func(d *Dcron) {
+		d.runningLocally = true
+	}
+}

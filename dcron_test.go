@@ -358,6 +358,43 @@ func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyFalse() {
 	}
 }
 
+func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyTrue() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+	result := make(chan bool, 1)
+	dcr.Start()
+	go func() {
+		// check function
+		<-time.After(5 * time.Second)
+		jobs := dcr.GetJobs(true)
+		s.Assert().Len(jobs, n)
+		result <- true
+	}()
+	s.Assert().True(<-result)
+}
+
 func TestDcronTestMain(t *testing.T) {
 	suite.Run(t, new(testDcronTestSuite))
 }
