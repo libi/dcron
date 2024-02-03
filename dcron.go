@@ -239,12 +239,14 @@ func (d *Dcron) Start() {
 		d.RecoverFunc(d)
 	}
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
-		if err := d.startNodePool(); err != nil {
-			atomic.StoreInt32(&d.running, dcronStopped)
-			return
+		if !d.runningLocally {
+			if err := d.startNodePool(); err != nil {
+				atomic.StoreInt32(&d.running, dcronStopped)
+				return
+			}
+			d.logger.Infof("dcron started, nodeID is %s", d.nodePool.GetNodeID())
 		}
 		d.cr.Start()
-		d.logger.Infof("dcron started, nodeID is %s", d.nodePool.GetNodeID())
 	} else {
 		d.logger.Infof("dcron have started")
 	}
@@ -257,11 +259,13 @@ func (d *Dcron) Run() {
 		d.RecoverFunc(d)
 	}
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
-		if err := d.startNodePool(); err != nil {
-			atomic.StoreInt32(&d.running, dcronStopped)
-			return
+		if !d.runningLocally {
+			if err := d.startNodePool(); err != nil {
+				atomic.StoreInt32(&d.running, dcronStopped)
+				return
+			}
+			d.logger.Infof("dcron running, nodeID is %s", d.nodePool.GetNodeID())
 		}
-		d.logger.Infof("dcron running, nodeID is %s", d.nodePool.GetNodeID())
 		d.cr.Run()
 	} else {
 		d.logger.Infof("dcron already running")
@@ -279,7 +283,9 @@ func (d *Dcron) startNodePool() error {
 // Stop job
 func (d *Dcron) Stop() {
 	tick := time.NewTicker(time.Millisecond)
-	d.nodePool.Stop(context.Background())
+	if !d.runningLocally {
+		d.nodePool.Stop(context.Background())
+	}
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
 			d.cr.Stop()
