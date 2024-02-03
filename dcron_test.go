@@ -313,12 +313,17 @@ func (s *testDcronTestSuite) Test_SecondJobLog_Issue68() {
 }
 
 type testGetJob struct {
-	Called bool
-	Name   string
+	Called  int
+	Reached int
+	Name    string
 }
 
 func (job *testGetJob) Run() {
-	job.Called = true
+	job.Called++
+}
+
+func (job *testGetJob) Reach() {
+	job.Reached++
 }
 
 func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyFalse() {
@@ -354,8 +359,50 @@ func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyFalse() {
 	}
 	for _, job := range jobs {
 		assert.Equal(t, job.Name, job.Job.(*testGetJob).Name)
-		assert.True(t, job.Job.(*testGetJob).Called)
+		assert.True(t, job.Job.(*testGetJob).Called > 0)
 	}
+}
+
+func (s *testDcronTestSuite) Test_GetJob_ThisNodeOnlyFalse() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+
+	for i := 0; i < n; i++ {
+		job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), false)
+		s.Assert().Nil(err)
+		job.Job.Run()
+	}
+
+	for i := 0; i < n; i++ {
+		job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), false)
+		s.Assert().Nil(err)
+		s.Assert().Equal(1, job.Job.(*testGetJob).Called)
+	}
+
+	_, err := dcr.GetJob("xxx", false)
+	s.Assert().NotNil(err)
 }
 
 func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyTrue() {
@@ -390,6 +437,52 @@ func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyTrue() {
 		<-time.After(5 * time.Second)
 		jobs := dcr.GetJobs(true)
 		s.Assert().Len(jobs, n)
+		result <- true
+	}()
+	s.Assert().True(<-result)
+}
+
+func (s *testDcronTestSuite) Test_GetJob_ThisNodeOnlyTrue() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+	result := make(chan bool, 1)
+	dcr.Start()
+	go func() {
+		// check function
+		<-time.After(5 * time.Second)
+		for i := 0; i < n; i++ {
+			job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), false)
+			s.Assert().Nil(err)
+			job.Job.(*testGetJob).Reach()
+		}
+
+		for i := 0; i < n; i++ {
+			job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), false)
+			s.Assert().Nil(err)
+			s.Assert().Equal(1, job.Job.(*testGetJob).Reached)
+		}
 		result <- true
 	}()
 	s.Assert().True(<-result)
