@@ -122,7 +122,7 @@ func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 	if _, ok := d.jobs[jobName]; ok {
 		return ErrJobExist
 	}
-	innerJob := JobWarpper{
+	innerJob := &JobWarpper{
 		Name:    jobName,
 		CronStr: cronStr,
 		Job:     job,
@@ -133,7 +133,7 @@ func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 		return err
 	}
 	innerJob.ID = entryID
-	d.jobs[jobName] = &innerJob
+	d.jobs[jobName] = innerJob
 	return nil
 }
 
@@ -170,7 +170,7 @@ func (d *Dcron) GetJob(jobName string, thisNodeOnly bool) (*JobWarpper, error) {
 	if err != nil {
 		return nil, err
 	}
-	if isRunningHere {
+	if !isRunningHere {
 		return nil, ErrJobWrongNode
 	}
 	return job, nil
