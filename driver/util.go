@@ -17,14 +17,6 @@ func GetNodeId(serviceName string) string {
 	return GetKeyPre(serviceName) + uuid.New().String()
 }
 
-func GetStableJobStore(serviceName string) string {
-	return GetKeyPre(serviceName) + "stable-jobs"
-}
-
-func GetStableJobStoreTxKey(serviceName string) string {
-	return GetKeyPre(serviceName) + "TX:stable-jobs"
-}
-
 func TimePre(t time.Time, preDuration time.Duration) int64 {
 	return t.Add(-preDuration).Unix()
 }
