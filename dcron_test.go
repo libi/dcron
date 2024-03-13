@@ -1,6 +1,7 @@
 package dcron_test
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -8,17 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/cron"
 	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-const (
-	DefaultRedisAddr = "127.0.0.1:6379"
-)
+type testDcronTestSuite struct{ suite.Suite }
 
 type TestJobWithWG struct {
 	Name string
@@ -43,7 +45,8 @@ func (job *TestJobWithWG) Run() {
 	}
 }
 
-func TestMultiNodes(t *testing.T) {
+func (s *testDcronTestSuite) TestMultiNodes() {
+	t := s.T()
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
 	testJobWGs := make([]*sync.WaitGroup, 0)
@@ -83,11 +86,13 @@ func TestMultiNodes(t *testing.T) {
 	nodeCancel[2] = make(chan int, 1)
 
 	// 间隔1秒启动测试节点刷新逻辑
-	go runNode(t, wg, testJobs, nodeCancel[0])
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	go runNode(t, wg, testJobs, nodeCancel[0], rds.Addr())
 	<-time.After(time.Second)
-	go runNode(t, wg, testJobs, nodeCancel[1])
+	go runNode(t, wg, testJobs, nodeCancel[1], rds.Addr())
 	<-time.After(time.Second)
-	go runNode(t, wg, testJobs, nodeCancel[2])
+	go runNode(t, wg, testJobs, nodeCancel[2], rds.Addr())
 
 	testJobWGs[0].Wait()
 	testJobWGs[1].Wait()
@@ -99,9 +104,15 @@ func TestMultiNodes(t *testing.T) {
 	wg.Wait()
 }
 
-func runNode(t *testing.T, wg *sync.WaitGroup, testJobs []*TestJobWithWG, cancel chan int) {
+func runNode(
+	t *testing.T,
+	wg *sync.WaitGroup,
+	testJobs []*TestJobWithWG,
+	cancel chan int,
+	redisAddr string,
+) {
 	redisCli := redis.NewClient(&redis.Options{
-		Addr: DefaultRedisAddr,
+		Addr: redisAddr,
 	})
 	drv := driver.NewRedisDriver(redisCli)
 	dcron := dcron.NewDcronWithOption(
@@ -127,9 +138,12 @@ func runNode(t *testing.T, wg *sync.WaitGroup, testJobs []*TestJobWithWG, cancel
 	wg.Done()
 }
 
-func Test_SecondsJob(t *testing.T) {
+func (s *testDcronTestSuite) Test_SecondsJob() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
 	redisCli := redis.NewClient(&redis.Options{
-		Addr: DefaultRedisAddr,
+		Addr: rds.Addr(),
 	})
 	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
@@ -144,9 +158,9 @@ func Test_SecondsJob(t *testing.T) {
 	dcr.Stop()
 }
 
-func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T) {
+func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T, redisAddr string) {
 	redisCli := redis.NewClient(&redis.Options{
-		Addr: DefaultRedisAddr,
+		Addr: redisAddr,
 	})
 	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv,
@@ -177,9 +191,9 @@ func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *
 	wg.Done()
 }
 
-func runSecondNodeWithLogger(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T) {
+func runSecondNodeWithLogger(id string, wg *sync.WaitGroup, runningTime time.Duration, t *testing.T, redisAddr string) {
 	redisCli := redis.NewClient(&redis.Options{
-		Addr: DefaultRedisAddr,
+		Addr: redisAddr,
 	})
 	drv := driver.NewRedisDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
@@ -212,33 +226,41 @@ func runSecondNodeWithLogger(id string, wg *sync.WaitGroup, runningTime time.Dur
 	wg.Done()
 }
 
-func Test_SecondJobWithPanicAndMultiNodes(t *testing.T) {
+func (s *testDcronTestSuite) Test_SecondJobWithPanicAndMultiNodes() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
 	wg := &sync.WaitGroup{}
 	wg.Add(5)
-	go runSecondNode("1", wg, 45*time.Second, t)
-	go runSecondNode("2", wg, 45*time.Second, t)
-	go runSecondNode("3", wg, 45*time.Second, t)
-	go runSecondNode("4", wg, 45*time.Second, t)
-	go runSecondNode("5", wg, 45*time.Second, t)
+	go runSecondNode("1", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNode("2", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNode("3", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNode("4", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNode("5", wg, 45*time.Second, t, rds.Addr())
 	wg.Wait()
 }
 
-func Test_SecondJobWithStopAndSwapNode(t *testing.T) {
+func (s *testDcronTestSuite) Test_SecondJobWithStopAndSwapNode() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	go runSecondNode("1", wg, 60*time.Second, t)
-	go runSecondNode("2", wg, 20*time.Second, t)
+	go runSecondNode("1", wg, 60*time.Second, t, rds.Addr())
+	go runSecondNode("2", wg, 20*time.Second, t, rds.Addr())
 	wg.Wait()
 }
 
-func Test_WithClusterStableNodes(t *testing.T) {
+func (s *testDcronTestSuite) Test_WithClusterStableNodes() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
 	wg := &sync.WaitGroup{}
 	wg.Add(5)
-
 	runningTime := 60 * time.Second
 	startFunc := func(id string, timeWindow time.Duration, t *testing.T) {
 		redisCli := redis.NewClient(&redis.Options{
-			Addr: DefaultRedisAddr,
+			Addr: rds.Addr(),
 		})
 		drv := driver.NewRedisDriver(redisCli)
 		dcr := dcron.NewDcronWithOption(t.Name(), drv,
@@ -273,15 +295,221 @@ func Test_WithClusterStableNodes(t *testing.T) {
 	go startFunc("3", time.Second*6, t)
 	go startFunc("4", time.Second*6, t)
 	go startFunc("5", time.Second*6, t)
+	wg.Wait()
 }
 
-func Test_SecondJobLog_Issue68(t *testing.T) {
+func (s *testDcronTestSuite) Test_SecondJobLog_Issue68() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
 	wg := &sync.WaitGroup{}
 	wg.Add(5)
-	go runSecondNodeWithLogger("1", wg, 45*time.Second, t)
-	go runSecondNodeWithLogger("2", wg, 45*time.Second, t)
-	go runSecondNodeWithLogger("3", wg, 45*time.Second, t)
-	go runSecondNodeWithLogger("4", wg, 45*time.Second, t)
-	go runSecondNodeWithLogger("5", wg, 45*time.Second, t)
+	go runSecondNodeWithLogger("1", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNodeWithLogger("2", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNodeWithLogger("3", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNodeWithLogger("4", wg, 45*time.Second, t, rds.Addr())
+	go runSecondNodeWithLogger("5", wg, 45*time.Second, t, rds.Addr())
 	wg.Wait()
+}
+
+type testGetJob struct {
+	Called  int
+	Reached int
+	Name    string
+}
+
+func (job *testGetJob) Run() {
+	job.Called++
+}
+
+func (job *testGetJob) Reach() {
+	job.Reached++
+}
+
+func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyFalse() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+
+	jobs := dcr.GetJobs(false)
+	assert.Len(t, jobs, n)
+	for _, job := range jobs {
+		job.Job.Run()
+	}
+	for _, job := range jobs {
+		assert.Equal(t, job.Name, job.Job.(*testGetJob).Name)
+		assert.True(t, job.Job.(*testGetJob).Called > 0)
+	}
+}
+
+func (s *testDcronTestSuite) Test_GetJob_ThisNodeOnlyFalse() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+
+	for i := 0; i < n; i++ {
+		job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), false)
+		s.Assert().Nil(err)
+		job.Job.Run()
+	}
+
+	for i := 0; i < n; i++ {
+		job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), false)
+		s.Assert().Nil(err)
+		s.Assert().Equal(1, job.Job.(*testGetJob).Called)
+	}
+
+	_, err := dcr.GetJob("xxx", false)
+	s.Assert().NotNil(err)
+}
+
+func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyTrue() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+	result := make(chan bool, 1)
+	dcr.Start()
+	go func() {
+		// check function
+		<-time.After(5 * time.Second)
+		jobs := dcr.GetJobs(true)
+		s.Assert().Len(jobs, n)
+		result <- true
+	}()
+	s.Assert().True(<-result)
+}
+
+func (s *testDcronTestSuite) Test_GetJob_ThisNodeOnlyTrue() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	n := 10
+	for i := 0; i < n; i++ {
+		assert.Nil(
+			t,
+			dcr.AddJob(fmt.Sprintf("job_%d", i), "* * * * * *", &testGetJob{
+				Name: fmt.Sprintf("job_%d", i),
+			}),
+		)
+	}
+	result := make(chan bool, 1)
+	dcr.Start()
+	go func() {
+		// check function
+		<-time.After(5 * time.Second)
+		for i := 0; i < n; i++ {
+			job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), true)
+			t.Log(job)
+			s.Assert().Nil(err)
+			s.Assert().NotNil(job.Job)
+			job.Job.(*testGetJob).Reach()
+		}
+
+		for i := 0; i < n; i++ {
+			job, err := dcr.GetJob(fmt.Sprintf("job_%d", i), true)
+			s.Assert().Nil(err)
+			s.Assert().Equal(1, job.Job.(*testGetJob).Reached)
+		}
+		result <- true
+	}()
+	s.Assert().True(<-result)
+}
+
+func (s *testDcronTestSuite) Test_AddJob_JobName_Duplicate() {
+	t := s.T()
+	rds := miniredis.RunT(t)
+	defer rds.Close()
+	redisCli := redis.NewClient(&redis.Options{
+		Addr: rds.Addr(),
+	})
+	drv := driver.NewRedisDriver(redisCli)
+	dcr := dcron.NewDcronWithOption(
+		t.Name(),
+		drv,
+		dcron.CronOptionSeconds(),
+		dcron.WithLogger(dlog.VerbosePrintfLogger(
+			log.Default(),
+		)),
+	)
+	s.Assert().Nil(dcr.AddJob("test1", "* * * * * *", &testGetJob{}))
+	s.Assert().Equal(dcron.ErrJobExist, dcr.AddJob("test1", "* * * * * *", &testGetJob{}))
+}
+
+func TestDcronTestMain(t *testing.T) {
+	suite.Run(t, new(testDcronTestSuite))
 }

@@ -173,6 +173,9 @@ func (e *EtcdDriver) keepHeartBeat() {
 func (e *EtcdDriver) Init(serverName string, opts ...Option) {
 	e.serviceName = serverName
 	e.nodeID = GetNodeId(serverName)
+	for _, opt := range opts {
+		e.withOption(opt)
+	}
 }
 
 func (e *EtcdDriver) NodeID() string {

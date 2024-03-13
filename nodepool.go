@@ -21,14 +21,14 @@ const (
 // NodePool
 // For cluster steable.
 // NodePool has 2 states:
-// 1. Steady
-//		If this nodePoolLists is the same as the last update,
-//		we will mark this node's state to Steady. In this state,
-//		this node can run jobs.
-// 2. Upgrade
-//    If this nodePoolLists is different to the last update,
-// 		we will mark this node's state to Upgrade. In this state,
-//		this node can not run jobs.
+//  1. Steady
+//     If this nodePoolLists is the same as the last update,
+//     we will mark this node's state to Steady. In this state,
+//     this node can run jobs.
+//  2. Upgrade
+//     If this nodePoolLists is different to the last update,
+//     we will mark this node's state to Upgrade. In this state,
+//     this node can not run jobs.
 type NodePool struct {
 	serviceName string
 	nodeID      string
@@ -115,8 +115,9 @@ func (np *NodePool) CheckJobAvailable(jobName string) (bool, error) {
 	}
 	targetNode := np.nodes.Get(jobName)
 	if np.nodeID == targetNode {
-		np.logger.Infof("job %s, running in node: %s", jobName, targetNode)
+		np.logger.Infof("job %s, running in node: %s, nodeID is %s", jobName, targetNode, np.nodeID)
 	}
+
 	return np.nodeID == targetNode, nil
 }
 

@@ -13,7 +13,7 @@ import (
 )
 
 type RedisZSetDriver struct {
-	c           *redis.Client
+	c           redis.UniversalClient
 	serviceName string
 	nodeID      string
 	timeout     time.Duration
@@ -28,7 +28,7 @@ type RedisZSetDriver struct {
 	sync.Mutex
 }
 
-func newRedisZSetDriver(redisClient *redis.Client) *RedisZSetDriver {
+func newRedisZSetDriver(redisClient redis.UniversalClient) *RedisZSetDriver {
 	rd := &RedisZSetDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{

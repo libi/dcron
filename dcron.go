@@ -25,12 +25,18 @@ const (
 	dcronStateUpgrade = "dcronStateUpgrade"
 )
 
+var (
+	ErrJobExist     = errors.New("jobName already exist")
+	ErrJobNotExist  = errors.New("jobName not exist")
+	ErrJobWrongNode = errors.New("job is not running in this node")
+)
+
 type RecoverFuncType func(d *Dcron)
 
 // Dcron is main struct
 type Dcron struct {
 	jobs      map[string]*JobWarpper
-	jobsRWMut sync.Mutex
+	jobsRWMut sync.RWMutex
 
 	ServerName string
 	nodePool   INodePool
@@ -48,6 +54,8 @@ type Dcron struct {
 
 	recentJobs IRecentJobPacker
 	state      atomic.Value
+
+	runningLocally bool
 }
 
 // NewDcron create a Dcron
@@ -68,7 +76,9 @@ func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...
 	}
 
 	dcron.cr = cron.New(dcron.crOptions...)
-	dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
+	if !dcron.runningLocally {
+		dcron.nodePool = NewNodePool(serverName, driver, dcron.nodeUpdateDuration, dcron.hashReplicas, dcron.logger)
+	}
 	return dcron
 }
 
@@ -110,9 +120,9 @@ func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 	d.jobsRWMut.Lock()
 	defer d.jobsRWMut.Unlock()
 	if _, ok := d.jobs[jobName]; ok {
-		return errors.New("jobName already exist")
+		return ErrJobExist
 	}
-	innerJob := JobWarpper{
+	innerJob := &JobWarpper{
 		Name:    jobName,
 		CronStr: cronStr,
 		Job:     job,
@@ -123,11 +133,11 @@ func (d *Dcron) addJob(jobName, cronStr string, job Job) (err error) {
 		return err
 	}
 	innerJob.ID = entryID
-	d.jobs[jobName] = &innerJob
+	d.jobs[jobName] = innerJob
 	return nil
 }
 
-// Remove Job
+// Remove Job by jobName
 func (d *Dcron) Remove(jobName string) {
 	d.jobsRWMut.Lock()
 	defer d.jobsRWMut.Unlock()
@@ -138,7 +148,71 @@ func (d *Dcron) Remove(jobName string) {
 	}
 }
 
+// Get job by jobName
+// if this jobName not exist, will return error.
+//
+//	if `thisNodeOnly` is true
+//		if this job is not available in this node, will return error.
+//	otherwise return the struct of JobWarpper whose name is jobName.
+func (d *Dcron) GetJob(jobName string, thisNodeOnly bool) (*JobWarpper, error) {
+	d.jobsRWMut.RLock()
+	defer d.jobsRWMut.RUnlock()
+
+	job, ok := d.jobs[jobName]
+	if !ok {
+		d.logger.Warnf("job: %s, not exist", jobName)
+		return nil, ErrJobNotExist
+	}
+	if !thisNodeOnly {
+		return job, nil
+	}
+	isRunningHere, err := d.nodePool.CheckJobAvailable(jobName)
+	if err != nil {
+		return nil, err
+	}
+	if !isRunningHere {
+		return nil, ErrJobWrongNode
+	}
+	return job, nil
+}
+
+// Get job list.
+//
+//	if `thisNodeOnly` is true
+//		return all jobs available in this node.
+//	otherwise return all jobs added to dcron.
+//
+// we never return nil. If there is no job.
+// this func will return an empty slice.
+func (d *Dcron) GetJobs(thisNodeOnly bool) []*JobWarpper {
+	d.jobsRWMut.RLock()
+	defer d.jobsRWMut.RUnlock()
+
+	ret := make([]*JobWarpper, 0)
+	for _, v := range d.jobs {
+		var (
+			isRunningHere bool
+			ok            bool = true
+			err           error
+		)
+		if thisNodeOnly {
+			isRunningHere, err = d.nodePool.CheckJobAvailable(v.Name)
+			if err != nil {
+				continue
+			}
+			ok = isRunningHere
+		}
+		if ok {
+			ret = append(ret, v)
+		}
+	}
+	return ret
+}
+
 func (d *Dcron) allowThisNodeRun(jobName string) (ok bool) {
+	if d.runningLocally {
+		return true
+	}
 	ok, err := d.nodePool.CheckJobAvailable(jobName)
 	if err != nil {
 		d.logger.Errorf("allow this node run error, err=%v", err)
@@ -165,12 +239,14 @@ func (d *Dcron) Start() {
 		d.RecoverFunc(d)
 	}
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
-		if err := d.startNodePool(); err != nil {
-			atomic.StoreInt32(&d.running, dcronStopped)
-			return
+		if !d.runningLocally {
+			if err := d.startNodePool(); err != nil {
+				atomic.StoreInt32(&d.running, dcronStopped)
+				return
+			}
+			d.logger.Infof("dcron started, nodeID is %s", d.nodePool.GetNodeID())
 		}
 		d.cr.Start()
-		d.logger.Infof("dcron started, nodeID is %s", d.nodePool.GetNodeID())
 	} else {
 		d.logger.Infof("dcron have started")
 	}
@@ -183,11 +259,13 @@ func (d *Dcron) Run() {
 		d.RecoverFunc(d)
 	}
 	if atomic.CompareAndSwapInt32(&d.running, dcronStopped, dcronRunning) {
-		if err := d.startNodePool(); err != nil {
-			atomic.StoreInt32(&d.running, dcronStopped)
-			return
+		if !d.runningLocally {
+			if err := d.startNodePool(); err != nil {
+				atomic.StoreInt32(&d.running, dcronStopped)
+				return
+			}
+			d.logger.Infof("dcron running, nodeID is %s", d.nodePool.GetNodeID())
 		}
-		d.logger.Infof("dcron running, nodeID is %s", d.nodePool.GetNodeID())
 		d.cr.Run()
 	} else {
 		d.logger.Infof("dcron already running")
@@ -205,7 +283,9 @@ func (d *Dcron) startNodePool() error {
 // Stop job
 func (d *Dcron) Stop() {
 	tick := time.NewTicker(time.Millisecond)
-	d.nodePool.Stop(context.Background())
+	if !d.runningLocally {
+		d.nodePool.Stop(context.Background())
+	}
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
 			d.cr.Stop()

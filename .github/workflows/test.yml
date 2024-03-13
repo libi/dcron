@@ -20,12 +20,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Redis Server in GitHub Actions
-      uses: supercharge/redis-github-action@1.7.0
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go_version }}
 
@@ -33,7 +31,7 @@ jobs:
       run: go test -v -timeout 30m -coverprofile=coverage.txt -covermode=atomic ./...
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
