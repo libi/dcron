@@ -1,8 +1,7 @@
 package cron
 
 import (
-	"fmt"
-	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -45,14 +44,7 @@ func Recover(logger dlog.Logger) JobWrapper {
 		return FuncJob(func() {
 			defer func() {
 				if r := recover(); r != nil {
-					const size = 64 << 10
-					buf := make([]byte, size)
-					buf = buf[:runtime.Stack(buf, false)]
-					err, ok := r.(error)
-					if !ok {
-						err = fmt.Errorf("%v", r)
-					}
-					logger.Errorf("panic: stack %v\n%v\n", err, string(buf))
+					logger.Errorf("panic: stack %v\n%s\n", r, debug.Stack())
 				}
 			}()
 			j.Run()
