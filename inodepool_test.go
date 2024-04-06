@@ -2,6 +2,7 @@ package dcron_test
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/consistenthash"
+	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
@@ -161,6 +163,43 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
 	}
 	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
 	ts.stopAllNodePools(nodePools)
+}
+
+func (ts *TestINodePoolSuite) TestCheckJobAvailableFailedWithNodePoolRingIsNil() {
+	np := &dcron.NodePool{}
+	np.SetLogger(dlog.NewLoggerForTest(ts.T()))
+	_, err := np.CheckJobAvailable("testjob")
+	ts.Equal(dcron.ErrNodePoolIsNil, err)
+}
+
+func (ts *TestINodePoolSuite) TestStartFailedWithDriverStartError() {
+	expectErr := errors.New("driver start error")
+	md := &driver.MockDriver{
+		StartFunc: func(context.Context) error {
+			return expectErr
+		},
+	}
+	np := dcron.NewNodePool(
+		"testServiceName",
+		md, 3*time.Second,
+		ts.defaultHashReplicas,
+		dlog.NewLoggerForTest(ts.T()))
+	ts.Equal(expectErr, np.Start(context.Background()))
+}
+
+func (ts *TestINodePoolSuite) TestStartFailedWithDriverGetNodesError() {
+	expectErr := errors.New("driver get nodes error")
+	md := &driver.MockDriver{
+		GetNodesFunc: func(ctx context.Context) ([]string, error) {
+			return nil, expectErr
+		},
+	}
+	np := dcron.NewNodePool(
+		"testServiceName",
+		md, 3*time.Second,
+		ts.defaultHashReplicas,
+		dlog.NewLoggerForTest(ts.T()))
+	ts.Equal(expectErr, np.Start(context.Background()))
 }
 
 func TestTestINodePoolSuite(t *testing.T) {

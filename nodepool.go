@@ -75,6 +75,10 @@ func NewNodePool(
 	return np
 }
 
+func (np *NodePool) SetLogger(logger dlog.Logger) {
+	np.logger = logger
+}
+
 func (np *NodePool) Start(ctx context.Context) (err error) {
 	err = np.driver.Start(ctx)
 	if err != nil {
@@ -106,6 +110,7 @@ func (np *NodePool) CheckJobAvailable(jobName string) (bool, error) {
 	defer np.rwMut.RUnlock()
 	if np.nodes == nil {
 		np.logger.Errorf("nodeID=%s, NodePool.nodes is nil", np.nodeID)
+		return false, ErrNodePoolIsNil
 	}
 	if np.nodes.IsEmpty() {
 		return false, nil

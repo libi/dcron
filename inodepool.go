@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrNodePoolIsUpgrading = errors.New("nodePool is upgrading")
+	ErrNodePoolIsNil       = errors.New("nodePool is nil")
 )
 
 type INodePool interface {
