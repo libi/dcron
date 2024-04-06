@@ -174,7 +174,7 @@ func (e *EtcdDriver) Init(serverName string, opts ...Option) {
 	e.serviceName = serverName
 	e.nodeID = GetNodeId(serverName)
 	for _, opt := range opts {
-		e.withOption(opt)
+		e.WithOption(opt)
 	}
 }
 
@@ -204,7 +204,7 @@ func (e *EtcdDriver) Stop(ctx context.Context) (err error) {
 	return
 }
 
-func (e *EtcdDriver) withOption(opt Option) (err error) {
+func (e *EtcdDriver) WithOption(opt Option) (err error) {
 	switch opt.Type() {
 	case OptionTypeTimeout:
 		{

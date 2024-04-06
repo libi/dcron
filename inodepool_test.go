@@ -174,7 +174,7 @@ func (ts *TestINodePoolSuite) TestCheckJobAvailableFailedWithNodePoolRingIsNil()
 
 func (ts *TestINodePoolSuite) TestStartFailedWithDriverStartError() {
 	expectErr := errors.New("driver start error")
-	md := &driver.MockDriver{
+	md := &MockDriver{
 		StartFunc: func(context.Context) error {
 			return expectErr
 		},
@@ -189,7 +189,7 @@ func (ts *TestINodePoolSuite) TestStartFailedWithDriverStartError() {
 
 func (ts *TestINodePoolSuite) TestStartFailedWithDriverGetNodesError() {
 	expectErr := errors.New("driver get nodes error")
-	md := &driver.MockDriver{
+	md := &MockDriver{
 		GetNodesFunc: func(ctx context.Context) ([]string, error) {
 			return nil, expectErr
 		},
