@@ -27,7 +27,7 @@ type DriverV2 interface {
 	// stop the goroutine of keep connection.
 	Stop(ctx context.Context) (err error)
 
-	withOption(opt Option) (err error)
+	WithOption(opt Option) (err error)
 }
 
 func NewRedisDriver(redisClient redis.UniversalClient) DriverV2 {
