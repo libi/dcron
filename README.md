@@ -81,3 +81,7 @@ Multiple nodes using the same service name will be considered as the same task g
 ### Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=libi/dcron&type=Date)](https://star-history.com/#libi/dcron&Date)
+
+### Thanks
+- [JetBrains](https://www.jetbrains.com/?from=dcron) Thanks for providing an All Products License!
+
