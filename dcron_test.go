@@ -171,6 +171,8 @@ func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *
 		dcron.CronOptionChain(cron.Recover(
 			cron.DefaultLogger,
 		)),
+		dcron.WithHashReplicas(20),
+		dcron.CronOptionLocation(time.Local),
 	)
 	var err error
 	err = dcr.AddFunc("job1", "*/5 * * * * *", func() {

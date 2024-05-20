@@ -49,7 +49,7 @@ func (rd *RedisDriver) Init(serviceName string, opts ...Option) {
 	rd.nodeID = GetNodeId(rd.serviceName)
 
 	for _, opt := range opts {
-		rd.withOption(opt)
+		rd.WithOption(opt)
 	}
 }
 
@@ -130,7 +130,7 @@ func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, err
 	return ret, nil
 }
 
-func (rd *RedisDriver) withOption(opt Option) (err error) {
+func (rd *RedisDriver) WithOption(opt Option) (err error) {
 	switch opt.Type() {
 	case OptionTypeTimeout:
 		{

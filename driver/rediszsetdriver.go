@@ -44,7 +44,7 @@ func (rd *RedisZSetDriver) Init(serviceName string, opts ...Option) {
 	rd.serviceName = serviceName
 	rd.nodeID = GetNodeId(serviceName)
 	for _, opt := range opts {
-		rd.withOption(opt)
+		rd.WithOption(opt)
 	}
 }
 
@@ -95,7 +95,7 @@ func (rd *RedisZSetDriver) Stop(ctx context.Context) (err error) {
 	return
 }
 
-func (rd *RedisZSetDriver) withOption(opt Option) (err error) {
+func (rd *RedisZSetDriver) WithOption(opt Option) (err error) {
 	switch opt.Type() {
 	case OptionTypeTimeout:
 		{
