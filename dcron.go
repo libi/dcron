@@ -280,7 +280,9 @@ func (d *Dcron) startNodePool() error {
 	return nil
 }
 
-// Stop job
+// This function is to Stop the dcron.
+// Stop stops the cron scheduler if it is running; otherwise it does nothing.
+// A context is returned so the caller can wait for running jobs to complete.
 func (d *Dcron) Stop() context.Context {
 	tick := time.NewTicker(time.Millisecond)
 	if !d.runningLocally {
