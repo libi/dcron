@@ -280,19 +280,22 @@ func (d *Dcron) startNodePool() error {
 	return nil
 }
 
-// Stop job
-func (d *Dcron) Stop() {
+// This function is to Stop the dcron.
+// Stop stops the cron scheduler if it is running; otherwise it does nothing.
+// A context is returned so the caller can wait for running jobs to complete.
+func (d *Dcron) Stop() context.Context {
 	tick := time.NewTicker(time.Millisecond)
 	if !d.runningLocally {
 		d.nodePool.Stop(context.Background())
 	}
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
-			d.cr.Stop()
 			d.logger.Infof("dcron stopped")
-			return
+			return d.cr.Stop()
 		}
 	}
+	// We ensure this function won't return nil.
+	return nil
 }
 
 func (d *Dcron) reRunRecentJobs(jobNames []string) {

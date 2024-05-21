@@ -86,7 +86,7 @@ func (ts *TestINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, 
 	}
 }
 
-func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, ServiceName string, nodePools *[]dcron.INodePool, updateDuration time.Duration) {
+func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, nodePools *[]dcron.INodePool, updateDuration time.Duration) {
 	for i := 0; i < numberOfNodes; i++ {
 		err := (*nodePools)[i].Start(context.Background())
 		ts.Require().Nil(err)
@@ -123,7 +123,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedis() {
 	for i := 0; i < numberOfNodes; i++ {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
 	}
-	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+	ts.runCheckJobAvailable(numberOfNodes, &nodePools, updateDuration)
 	ts.stopAllNodePools(nodePools)
 }
 
@@ -142,7 +142,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
 	for i := 0; i < numberOfNodes; i++ {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
 	}
-	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+	ts.runCheckJobAvailable(numberOfNodes, &nodePools, updateDuration)
 	ts.stopAllNodePools(nodePools)
 }
 
@@ -161,7 +161,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
 	for i := 0; i < numberOfNodes; i++ {
 		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
 	}
-	ts.runCheckJobAvailable(numberOfNodes, ServiceName, &nodePools, updateDuration)
+	ts.runCheckJobAvailable(numberOfNodes, &nodePools, updateDuration)
 	ts.stopAllNodePools(nodePools)
 }
 
