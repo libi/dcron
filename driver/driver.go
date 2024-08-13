@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 
+	"github.com/libi/dcron/commons"
 	redis "github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -13,7 +14,7 @@ import (
 //  2. Must make `GetNodes` will return error when timeout.
 type DriverV2 interface {
 	// init driver
-	Init(serviceName string, opts ...Option)
+	Init(serviceName string, opts ...commons.Option)
 	// get nodeID
 	NodeID() string
 	// get nodes
@@ -27,7 +28,7 @@ type DriverV2 interface {
 	// stop the goroutine of keep connection.
 	Stop(ctx context.Context) (err error)
 
-	WithOption(opt Option) (err error)
+	WithOption(opt commons.Option) (err error)
 }
 
 func NewRedisDriver(redisClient redis.UniversalClient) DriverV2 {

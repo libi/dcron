@@ -6,7 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/commons"
+	"github.com/libi/dcron/commons/dlog"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -70,7 +71,7 @@ func (e *EtcdDriver) putKeyWithLease(ctx context.Context, key, val string) (clie
 
 // WatchService 初始化服务列表和监视
 func (e *EtcdDriver) watchService(ctx context.Context, serviceName string) error {
-	prefix := GetKeyPre(serviceName)
+	prefix := commons.GetKeyPre(serviceName)
 	// 根据前缀获取现有的key
 	resp, err := e.cli.Get(ctx, prefix, clientv3.WithPrefix())
 	if err != nil {
@@ -88,7 +89,7 @@ func (e *EtcdDriver) watchService(ctx context.Context, serviceName string) error
 
 // watcher 监听前缀
 func (e *EtcdDriver) watcher(serviceName string) {
-	prefix := GetKeyPre(serviceName)
+	prefix := commons.GetKeyPre(serviceName)
 	rch := e.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
@@ -170,9 +171,9 @@ func (e *EtcdDriver) keepHeartBeat() {
 	}
 }
 
-func (e *EtcdDriver) Init(serverName string, opts ...Option) {
+func (e *EtcdDriver) Init(serverName string, opts ...commons.Option) {
 	e.serviceName = serverName
-	e.nodeID = GetNodeId(serverName)
+	e.nodeID = commons.GetNodeId(serverName)
 	for _, opt := range opts {
 		e.WithOption(opt)
 	}
@@ -204,15 +205,15 @@ func (e *EtcdDriver) Stop(ctx context.Context) (err error) {
 	return
 }
 
-func (e *EtcdDriver) WithOption(opt Option) (err error) {
+func (e *EtcdDriver) WithOption(opt commons.Option) (err error) {
 	switch opt.Type() {
-	case OptionTypeTimeout:
+	case commons.OptionTypeTimeout:
 		{
-			e.lease = int64(opt.(TimeoutOption).timeout.Seconds())
+			e.lease = int64(opt.(commons.TimeoutOption).Timeout.Seconds())
 		}
-	case OptionTypeLogger:
+	case commons.OptionTypeLogger:
 		{
-			e.logger = opt.(LoggerOption).logger
+			e.logger = opt.(commons.LoggerOption).Logger
 		}
 	}
 	return

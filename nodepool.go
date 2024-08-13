@@ -8,8 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/libi/dcron/commons"
+	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/dlog"
 	"github.com/libi/dcron/driver"
 )
 
@@ -70,8 +71,8 @@ func NewNodePool(
 		np.logger = logger
 	}
 	np.driver.Init(serviceName,
-		driver.NewTimeoutOption(updateDuration),
-		driver.NewLoggerOption(np.logger))
+		commons.NewTimeoutOption(updateDuration),
+		commons.NewLoggerOption(np.logger))
 	return np
 }
 

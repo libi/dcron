@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/commons"
+	"github.com/libi/dcron/commons/dlog"
 	redis "github.com/redis/go-redis/v9"
 )
 
@@ -44,9 +45,9 @@ func newRedisDriver(redisClient redis.UniversalClient) *RedisDriver {
 	return rd
 }
 
-func (rd *RedisDriver) Init(serviceName string, opts ...Option) {
+func (rd *RedisDriver) Init(serviceName string, opts ...commons.Option) {
 	rd.serviceName = serviceName
-	rd.nodeID = GetNodeId(rd.serviceName)
+	rd.nodeID = commons.GetNodeId(rd.serviceName)
 
 	for _, opt := range opts {
 		rd.WithOption(opt)
@@ -86,7 +87,7 @@ func (rd *RedisDriver) Stop(ctx context.Context) (err error) {
 }
 
 func (rd *RedisDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
-	mathStr := fmt.Sprintf("%s*", GetKeyPre(rd.serviceName))
+	mathStr := fmt.Sprintf("%s*", commons.GetKeyPre(rd.serviceName))
 	return rd.scan(ctx, mathStr)
 }
 
@@ -130,15 +131,15 @@ func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, err
 	return ret, nil
 }
 
-func (rd *RedisDriver) WithOption(opt Option) (err error) {
+func (rd *RedisDriver) WithOption(opt commons.Option) (err error) {
 	switch opt.Type() {
-	case OptionTypeTimeout:
+	case commons.OptionTypeTimeout:
 		{
-			rd.timeout = opt.(TimeoutOption).timeout
+			rd.timeout = opt.(commons.TimeoutOption).Timeout
 		}
-	case OptionTypeLogger:
+	case commons.OptionTypeLogger:
 		{
-			rd.logger = opt.(LoggerOption).logger
+			rd.logger = opt.(commons.LoggerOption).Logger
 		}
 	}
 	return

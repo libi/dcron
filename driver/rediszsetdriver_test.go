@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/commons"
+	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/driver"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -27,8 +28,8 @@ func TestRedisZSetDriver_GetNodes(t *testing.T) {
 		drv := testFuncNewRedisZSetDriver(rds.Addr())
 		drv.Init(
 			t.Name(),
-			driver.NewTimeoutOption(5*time.Second),
-			driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
+			commons.NewTimeoutOption(5*time.Second),
+			commons.NewLoggerOption(dlog.NewLoggerForTest(t)))
 		err := drv.Start(context.Background())
 		require.Nil(t, err)
 		drvs = append(drvs, drv)
@@ -51,13 +52,13 @@ func TestRedisZSetDriver_Stop(t *testing.T) {
 	rds := miniredis.RunT(t)
 	drv1 := testFuncNewRedisZSetDriver(rds.Addr())
 	drv1.Init(t.Name(),
-		driver.NewTimeoutOption(5*time.Second),
-		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
+		commons.NewTimeoutOption(5*time.Second),
+		commons.NewLoggerOption(dlog.NewLoggerForTest(t)))
 
 	drv2 := testFuncNewRedisZSetDriver(rds.Addr())
 	drv2.Init(t.Name(),
-		driver.NewTimeoutOption(5*time.Second),
-		driver.NewLoggerOption(dlog.NewLoggerForTest(t)))
+		commons.NewTimeoutOption(5*time.Second),
+		commons.NewLoggerOption(dlog.NewLoggerForTest(t)))
 
 	require.Nil(t, drv2.Start(context.Background()))
 	require.Nil(t, drv1.Start(context.Background()))

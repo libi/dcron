@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/driver"
 	"github.com/redis/go-redis/v9"
 )
