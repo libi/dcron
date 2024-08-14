@@ -1,8 +1,6 @@
 module github.com/libi/dcron/driver/etcddriver
 
-go 1.21
-
-toolchain go1.22.0
+go 1.19
 
 replace github.com/libi/dcron/commons v0.0.0 => ../../commons
 

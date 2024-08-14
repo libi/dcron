@@ -1,8 +1,6 @@
 module github.com/libi/dcron/examples
 
-go 1.21
-
-toolchain go1.22.0
+go 1.19
 
 replace (
 	github.com/libi/dcron v0.0.0 => ../
