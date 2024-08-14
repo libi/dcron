@@ -11,7 +11,6 @@ import (
 	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/driver"
 )
 
 const (
@@ -37,7 +36,7 @@ type NodePool struct {
 	rwMut sync.RWMutex
 	nodes *consistenthash.Map
 
-	driver         driver.DriverV2
+	driver         commons.DriverV2
 	hashReplicas   int
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
@@ -52,7 +51,7 @@ type NodePool struct {
 
 func NewNodePool(
 	serviceName string,
-	drv driver.DriverV2,
+	drv commons.DriverV2,
 	updateDuration time.Duration,
 	hashReplicas int,
 	logger dlog.Logger,

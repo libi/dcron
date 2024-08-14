@@ -1,4 +1,4 @@
-package driver
+package rediszsetdriver
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 
 	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
-	redis "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
 	redisDefaultTimeout = 5 * time.Second
 )
 
-type RedisDriver struct {
+type RedisZSetDriver struct {
 	c           redis.UniversalClient
 	serviceName string
 	nodeID      string
@@ -33,8 +33,8 @@ type RedisDriver struct {
 	sync.Mutex
 }
 
-func newRedisDriver(redisClient redis.UniversalClient) *RedisDriver {
-	rd := &RedisDriver{
+func NewDriver(redisClient redis.UniversalClient) *RedisZSetDriver {
+	rd := &RedisZSetDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{
 			Log: log.Default(),
@@ -45,20 +45,35 @@ func newRedisDriver(redisClient redis.UniversalClient) *RedisDriver {
 	return rd
 }
 
-func (rd *RedisDriver) Init(serviceName string, opts ...commons.Option) {
+func (rd *RedisZSetDriver) Init(serviceName string, opts ...commons.Option) {
 	rd.serviceName = serviceName
-	rd.nodeID = commons.GetNodeId(rd.serviceName)
-
+	rd.nodeID = commons.GetNodeId(serviceName)
 	for _, opt := range opts {
 		rd.WithOption(opt)
 	}
 }
 
-func (rd *RedisDriver) NodeID() string {
+func (rd *RedisZSetDriver) NodeID() string {
 	return rd.nodeID
 }
 
-func (rd *RedisDriver) Start(ctx context.Context) (err error) {
+func (rd *RedisZSetDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
+	rd.Lock()
+	defer rd.Unlock()
+	sliceCmd := rd.c.ZRangeByScore(ctx, commons.GetKeyPre(rd.serviceName), &redis.ZRangeBy{
+		Min: fmt.Sprintf("%d", commons.TimePre(time.Now(), rd.timeout)),
+		Max: "+inf",
+	})
+	if err = sliceCmd.Err(); err != nil {
+		return nil, err
+	} else {
+		nodes = make([]string, len(sliceCmd.Val()))
+		copy(nodes, sliceCmd.Val())
+	}
+	rd.logger.Infof("nodes=%v", nodes)
+	return
+}
+func (rd *RedisZSetDriver) Start(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
 	if rd.started {
@@ -77,8 +92,7 @@ func (rd *RedisDriver) Start(ctx context.Context) (err error) {
 	go rd.heartBeat()
 	return
 }
-
-func (rd *RedisDriver) Stop(ctx context.Context) (err error) {
+func (rd *RedisZSetDriver) Stop(ctx context.Context) (err error) {
 	rd.Lock()
 	defer rd.Unlock()
 	rd.runtimeCancel()
@@ -86,14 +100,23 @@ func (rd *RedisDriver) Stop(ctx context.Context) (err error) {
 	return
 }
 
-func (rd *RedisDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
-	mathStr := fmt.Sprintf("%s*", commons.GetKeyPre(rd.serviceName))
-	return rd.scan(ctx, mathStr)
+func (rd *RedisZSetDriver) WithOption(opt commons.Option) (err error) {
+	switch opt.Type() {
+	case commons.OptionTypeTimeout:
+		{
+			rd.timeout = opt.(commons.TimeoutOption).Timeout
+		}
+	case commons.OptionTypeLogger:
+		{
+			rd.logger = opt.(commons.LoggerOption).Logger
+		}
+	}
+	return
 }
 
 // private function
 
-func (rd *RedisDriver) heartBeat() {
+func (rd *RedisZSetDriver) heartBeat() {
 	tick := time.NewTicker(rd.timeout / 2)
 	for {
 		select {
@@ -114,33 +137,9 @@ func (rd *RedisDriver) heartBeat() {
 	}
 }
 
-func (rd *RedisDriver) registerServiceNode() error {
-	return rd.c.SetEx(context.Background(), rd.nodeID, rd.nodeID, rd.timeout).Err()
-}
-
-func (rd *RedisDriver) scan(ctx context.Context, matchStr string) ([]string, error) {
-	ret := make([]string, 0)
-	iter := rd.c.Scan(ctx, 0, matchStr, -1).Iterator()
-	for iter.Next(ctx) {
-		err := iter.Err()
-		if err != nil {
-			return nil, err
-		}
-		ret = append(ret, iter.Val())
-	}
-	return ret, nil
-}
-
-func (rd *RedisDriver) WithOption(opt commons.Option) (err error) {
-	switch opt.Type() {
-	case commons.OptionTypeTimeout:
-		{
-			rd.timeout = opt.(commons.TimeoutOption).Timeout
-		}
-	case commons.OptionTypeLogger:
-		{
-			rd.logger = opt.(commons.LoggerOption).Logger
-		}
-	}
-	return
+func (rd *RedisZSetDriver) registerServiceNode() error {
+	return rd.c.ZAdd(context.Background(), commons.GetKeyPre(rd.serviceName), redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: rd.nodeID,
+	}).Err()
 }

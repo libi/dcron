@@ -13,7 +13,7 @@ import (
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/cron"
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/driver/redisdriver"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,7 +114,7 @@ func runNode(
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcron := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,
@@ -145,7 +145,7 @@ func (s *testDcronTestSuite) Test_SecondsJob() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: rds.Addr(),
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv, dcron.CronOptionSeconds())
 	err := dcr.AddFunc("job1", "*/5 * * * * *", func() {
 		t.Log(time.Now())
@@ -162,7 +162,7 @@ func runSecondNode(id string, wg *sync.WaitGroup, runningTime time.Duration, t *
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(t.Name(), drv,
 		dcron.CronOptionSeconds(),
 		dcron.WithLogger(dlog.DefaultPrintfLogger(
@@ -197,7 +197,7 @@ func runSecondNodeWithLogger(id string, wg *sync.WaitGroup, runningTime time.Dur
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: redisAddr,
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,
@@ -264,7 +264,7 @@ func (s *testDcronTestSuite) Test_WithClusterStableNodes() {
 		redisCli := redis.NewClient(&redis.Options{
 			Addr: rds.Addr(),
 		})
-		drv := driver.NewRedisDriver(redisCli)
+		drv := redisdriver.NewDriver(redisCli)
 		dcr := dcron.NewDcronWithOption(t.Name(), drv,
 			dcron.CronOptionSeconds(),
 			dcron.WithLogger(dlog.DefaultPrintfLogger(
@@ -335,7 +335,7 @@ func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyFalse() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: rds.Addr(),
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,
@@ -372,7 +372,7 @@ func (s *testDcronTestSuite) Test_GetJob_ThisNodeOnlyFalse() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: rds.Addr(),
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,
@@ -414,7 +414,7 @@ func (s *testDcronTestSuite) Test_GetJobs_ThisNodeOnlyTrue() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: rds.Addr(),
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,
@@ -451,7 +451,7 @@ func (s *testDcronTestSuite) Test_GetJob_ThisNodeOnlyTrue() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: rds.Addr(),
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,
@@ -499,7 +499,7 @@ func (s *testDcronTestSuite) Test_AddJob_JobName_Duplicate() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: rds.Addr(),
 	})
-	drv := driver.NewRedisDriver(redisCli)
+	drv := redisdriver.NewDriver(redisCli)
 	dcr := dcron.NewDcronWithOption(
 		t.Name(),
 		drv,

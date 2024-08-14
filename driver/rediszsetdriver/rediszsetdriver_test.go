@@ -1,4 +1,4 @@
-package driver_test
+package rediszsetdriver_test
 
 import (
 	"context"
@@ -8,21 +8,22 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/driver/rediszsetdriver"
+
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
-func testFuncNewRedisZSetDriver(addr string) driver.DriverV2 {
+func testFuncNewRedisZSetDriver(addr string) commons.DriverV2 {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
-	return driver.NewRedisZSetDriver(redisCli)
+	return rediszsetdriver.NewDriver(redisCli)
 }
 
 func TestRedisZSetDriver_GetNodes(t *testing.T) {
 	rds := miniredis.RunT(t)
-	drvs := make([]driver.DriverV2, 0)
+	drvs := make([]commons.DriverV2, 0)
 	N := 10
 	for i := 0; i < N; i++ {
 		drv := testFuncNewRedisZSetDriver(rds.Addr())

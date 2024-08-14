@@ -1,4 +1,4 @@
-package driver_test
+package redisdriver_test
 
 import (
 	"context"
@@ -9,22 +9,22 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/driver/redisdriver"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
-func testFuncNewRedisDriver(addr string) driver.DriverV2 {
+func testFuncNewRedisDriver(addr string) commons.DriverV2 {
 	log.Printf("redis=%s", addr)
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
-	return driver.NewRedisDriver(redisCli)
+	return redisdriver.NewDriver(redisCli)
 }
 
 func TestRedisDriver_GetNodes(t *testing.T) {
 	rds := miniredis.RunT(t)
-	drvs := make([]driver.DriverV2, 0)
+	drvs := make([]commons.DriverV2, 0)
 	N := 10
 	for i := 0; i < N; i++ {
 		drv := testFuncNewRedisDriver(rds.Addr())

@@ -1,4 +1,4 @@
-package driver
+package etcddriver
 
 import (
 	"context"
@@ -35,7 +35,7 @@ type EtcdDriver struct {
 }
 
 // NewEtcdDriver
-func newEtcdDriver(cli *clientv3.Client) *EtcdDriver {
+func NewDriver(cli *clientv3.Client) *EtcdDriver {
 	ser := &EtcdDriver{
 		cli:   cli,
 		nodes: &sync.Map{},

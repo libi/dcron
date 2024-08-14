@@ -1,37 +1,26 @@
-module github.com/libi/dcron
+module github.com/libi/dcron/driver/etcddriver
 
 go 1.21
 
 toolchain go1.22.0
 
+replace github.com/libi/dcron/commons v0.0.0 => ../../commons
+
 require (
-	github.com/alicebob/miniredis/v2 v2.32.1
 	github.com/libi/dcron/commons v0.0.0
-	github.com/libi/dcron/driver/etcddriver v0.0.0
-	github.com/libi/dcron/driver/redisdriver v0.0.0
-	github.com/libi/dcron/driver/rediszsetdriver v0.0.0
-	github.com/redis/go-redis/v9 v9.3.1
 	github.com/stretchr/testify v1.9.0
+	go.etcd.io/etcd/api/v3 v3.5.11
 	go.etcd.io/etcd/client/v3 v3.5.11
 	go.etcd.io/etcd/tests/v3 v3.5.11
 )
 
-replace (
-	github.com/libi/dcron/commons v0.0.0 => ./commons
-	github.com/libi/dcron/driver/etcddriver v0.0.0 => ./driver/etcddriver
-	github.com/libi/dcron/driver/redisdriver v0.0.0 => ./driver/redisdriver
-	github.com/libi/dcron/driver/rediszsetdriver v0.0.0 => ./driver/rediszsetdriver
-)
-
 require (
-	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -61,9 +50,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
-	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.etcd.io/bbolt v1.3.8 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.11 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.11 // indirect
 	go.etcd.io/etcd/client/v2 v2.305.11 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.11 // indirect

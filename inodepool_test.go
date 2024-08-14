@@ -9,9 +9,12 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron"
+	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/driver/etcddriver"
+	"github.com/libi/dcron/driver/redisdriver"
+	"github.com/libi/dcron/driver/rediszsetdriver"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -55,16 +58,16 @@ func (ts *TestINodePoolSuite) stopAllNodePools(nodePools []dcron.INodePool) {
 	}
 }
 
-func (ts *TestINodePoolSuite) declareRedisDrivers(clients *[]*redis.Client, drivers *[]driver.DriverV2, numberOfNodes int) {
+func (ts *TestINodePoolSuite) declareRedisDrivers(clients *[]*redis.Client, drivers *[]commons.DriverV2, numberOfNodes int) {
 	for i := 0; i < numberOfNodes; i++ {
 		*clients = append(*clients, redis.NewClient(&redis.Options{
 			Addr: ts.rds.Addr(),
 		}))
-		*drivers = append(*drivers, driver.NewRedisDriver((*clients)[i]))
+		*drivers = append(*drivers, redisdriver.NewDriver((*clients)[i]))
 	}
 }
 
-func (ts *TestINodePoolSuite) declareEtcdDrivers(clients *[]*clientv3.Client, drivers *[]driver.DriverV2, numberOfNodes int) {
+func (ts *TestINodePoolSuite) declareEtcdDrivers(clients *[]*clientv3.Client, drivers *[]commons.DriverV2, numberOfNodes int) {
 	for i := 0; i < numberOfNodes; i++ {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints: ts.etcdsvr.EndpointsV3(),
@@ -73,16 +76,16 @@ func (ts *TestINodePoolSuite) declareEtcdDrivers(clients *[]*clientv3.Client, dr
 			ts.T().Fatal(err)
 		}
 		*clients = append(*clients, cli)
-		*drivers = append(*drivers, driver.NewEtcdDriver((*clients)[i]))
+		*drivers = append(*drivers, etcddriver.NewDriver((*clients)[i]))
 	}
 }
 
-func (ts *TestINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, drivers *[]driver.DriverV2, numberOfNodes int) {
+func (ts *TestINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, drivers *[]commons.DriverV2, numberOfNodes int) {
 	for i := 0; i < numberOfNodes; i++ {
 		*clients = append(*clients, redis.NewClient(&redis.Options{
 			Addr: ts.rds.Addr(),
 		}))
-		*drivers = append(*drivers, driver.NewRedisZSetDriver((*clients)[i]))
+		*drivers = append(*drivers, rediszsetdriver.NewDriver((*clients)[i]))
 	}
 }
 
@@ -111,7 +114,7 @@ func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, nodePools 
 
 func (ts *TestINodePoolSuite) TestMultiNodesRedis() {
 	var clients []*redis.Client
-	var drivers []driver.DriverV2
+	var drivers []commons.DriverV2
 	var nodePools []dcron.INodePool
 
 	numberOfNodes := 5
@@ -129,7 +132,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesRedis() {
 
 func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
 	var clients []*clientv3.Client
-	var drivers []driver.DriverV2
+	var drivers []commons.DriverV2
 	var nodePools []dcron.INodePool
 
 	numberOfNodes := 5
@@ -148,7 +151,7 @@ func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
 
 func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
 	var clients []*redis.Client
-	var drivers []driver.DriverV2
+	var drivers []commons.DriverV2
 	var nodePools []dcron.INodePool
 
 	numberOfNodes := 5

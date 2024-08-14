@@ -1,4 +1,4 @@
-package driver_test
+package etcddriver_test
 
 import (
 	"context"
@@ -7,25 +7,25 @@ import (
 
 	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/driver/etcddriver"
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
-func testFuncNewEtcdDriver(cfg clientv3.Config) driver.DriverV2 {
+func testFuncNewEtcdDriver(cfg clientv3.Config) *etcddriver.EtcdDriver {
 	cli, err := clientv3.New(cfg)
 	if err != nil {
 		panic(err)
 	}
-	return driver.NewEtcdDriver(cli)
+	return etcddriver.NewDriver(cli)
 }
 
 func TestEtcdDriver_GetNodes(t *testing.T) {
 	etcdsvr := integration.NewLazyCluster()
 	defer etcdsvr.Terminate()
 	N := 10
-	drvs := make([]driver.DriverV2, 0)
+	drvs := make([]*etcddriver.EtcdDriver, 0)
 	for i := 0; i < N; i++ {
 		drv := testFuncNewEtcdDriver(clientv3.Config{
 			Endpoints:   etcdsvr.EndpointsV3(),

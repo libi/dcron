@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/cron"
-	"github.com/libi/dcron/driver"
 )
 
 const (
@@ -59,7 +59,7 @@ type Dcron struct {
 }
 
 // NewDcron create a Dcron
-func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option) *Dcron {
+func NewDcron(serverName string, driver commons.DriverV2, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
@@ -69,7 +69,7 @@ func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option
 }
 
 // NewDcronWithOption create a Dcron with Dcron Option
-func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...Option) *Dcron {
+func NewDcronWithOption(serverName string, driver commons.DriverV2, dcronOpts ...Option) *Dcron {
 	dcron := newDcron(serverName)
 	for _, opt := range dcronOpts {
 		opt(dcron)
