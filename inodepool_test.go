@@ -7,89 +7,33 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/commons"
 	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/driver/etcddriver"
-	"github.com/libi/dcron/driver/redisdriver"
-	"github.com/libi/dcron/driver/rediszsetdriver"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/integration"
 )
 
-type TestINodePoolSuite struct {
+type testINodePoolSuite struct {
 	suite.Suite
 
-	rds                 *miniredis.Miniredis
-	etcdsvr             integration.LazyCluster
 	defaultHashReplicas int
 }
 
-func (ts *TestINodePoolSuite) SetupTest() {
+func (ts *testINodePoolSuite) SetupTest() {
 	ts.defaultHashReplicas = 10
 }
 
-func (ts *TestINodePoolSuite) TearDownTest() {
-	if ts.rds != nil {
-		ts.rds.Close()
-		ts.rds = nil
-	}
-	if ts.etcdsvr != nil {
-		ts.etcdsvr.Terminate()
-		ts.etcdsvr = nil
-	}
+func (ts *testINodePoolSuite) TearDownTest() {
+
 }
 
-func (ts *TestINodePoolSuite) setUpRedis() {
-	ts.rds = miniredis.RunT(ts.T())
-}
-
-func (ts *TestINodePoolSuite) setUpEtcd() {
-	ts.etcdsvr = integration.NewLazyCluster()
-}
-
-func (ts *TestINodePoolSuite) stopAllNodePools(nodePools []dcron.INodePool) {
+func (ts *testINodePoolSuite) stopAllNodePools(nodePools []dcron.INodePool) {
 	for _, nodePool := range nodePools {
 		nodePool.Stop(context.Background())
 	}
 }
 
-func (ts *TestINodePoolSuite) declareRedisDrivers(clients *[]*redis.Client, drivers *[]commons.DriverV2, numberOfNodes int) {
-	for i := 0; i < numberOfNodes; i++ {
-		*clients = append(*clients, redis.NewClient(&redis.Options{
-			Addr: ts.rds.Addr(),
-		}))
-		*drivers = append(*drivers, redisdriver.NewDriver((*clients)[i]))
-	}
-}
-
-func (ts *TestINodePoolSuite) declareEtcdDrivers(clients *[]*clientv3.Client, drivers *[]commons.DriverV2, numberOfNodes int) {
-	for i := 0; i < numberOfNodes; i++ {
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints: ts.etcdsvr.EndpointsV3(),
-		})
-		if err != nil {
-			ts.T().Fatal(err)
-		}
-		*clients = append(*clients, cli)
-		*drivers = append(*drivers, etcddriver.NewDriver((*clients)[i]))
-	}
-}
-
-func (ts *TestINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, drivers *[]commons.DriverV2, numberOfNodes int) {
-	for i := 0; i < numberOfNodes; i++ {
-		*clients = append(*clients, redis.NewClient(&redis.Options{
-			Addr: ts.rds.Addr(),
-		}))
-		*drivers = append(*drivers, rediszsetdriver.NewDriver((*clients)[i]))
-	}
-}
-
-func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, nodePools *[]dcron.INodePool, updateDuration time.Duration) {
+func (ts *testINodePoolSuite) runCheckJobAvailable(numberOfNodes int, nodePools *[]dcron.INodePool, updateDuration time.Duration) {
 	for i := 0; i < numberOfNodes; i++ {
 		err := (*nodePools)[i].Start(context.Background())
 		ts.Require().Nil(err)
@@ -112,70 +56,14 @@ func (ts *TestINodePoolSuite) runCheckJobAvailable(numberOfNodes int, nodePools 
 	}
 }
 
-func (ts *TestINodePoolSuite) TestMultiNodesRedis() {
-	var clients []*redis.Client
-	var drivers []commons.DriverV2
-	var nodePools []dcron.INodePool
-
-	numberOfNodes := 5
-	ServiceName := "TestMultiNodesRedis"
-	updateDuration := 2 * time.Second
-	ts.setUpRedis()
-	ts.declareRedisDrivers(&clients, &drivers, numberOfNodes)
-
-	for i := 0; i < numberOfNodes; i++ {
-		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
-	}
-	ts.runCheckJobAvailable(numberOfNodes, &nodePools, updateDuration)
-	ts.stopAllNodePools(nodePools)
-}
-
-func (ts *TestINodePoolSuite) TestMultiNodesEtcd() {
-	var clients []*clientv3.Client
-	var drivers []commons.DriverV2
-	var nodePools []dcron.INodePool
-
-	numberOfNodes := 5
-	ServiceName := "TestMultiNodesEtcd"
-	updateDuration := 8 * time.Second
-
-	ts.setUpEtcd()
-	ts.declareEtcdDrivers(&clients, &drivers, numberOfNodes)
-
-	for i := 0; i < numberOfNodes; i++ {
-		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
-	}
-	ts.runCheckJobAvailable(numberOfNodes, &nodePools, updateDuration)
-	ts.stopAllNodePools(nodePools)
-}
-
-func (ts *TestINodePoolSuite) TestMultiNodesRedisZSet() {
-	var clients []*redis.Client
-	var drivers []commons.DriverV2
-	var nodePools []dcron.INodePool
-
-	numberOfNodes := 5
-	ServiceName := "TestMultiNodesZSet"
-	updateDuration := 2 * time.Second
-
-	ts.setUpRedis()
-	ts.declareRedisZSetDrivers(&clients, &drivers, numberOfNodes)
-
-	for i := 0; i < numberOfNodes; i++ {
-		nodePools = append(nodePools, dcron.NewNodePool(ServiceName, drivers[i], updateDuration, ts.defaultHashReplicas, nil))
-	}
-	ts.runCheckJobAvailable(numberOfNodes, &nodePools, updateDuration)
-	ts.stopAllNodePools(nodePools)
-}
-
-func (ts *TestINodePoolSuite) TestCheckJobAvailableFailedWithNodePoolRingIsNil() {
+func (ts *testINodePoolSuite) TestCheckJobAvailableFailedWithNodePoolRingIsNil() {
 	np := &dcron.NodePool{}
 	np.SetLogger(dlog.NewLoggerForTest(ts.T()))
 	_, err := np.CheckJobAvailable("testjob")
 	ts.Equal(dcron.ErrNodePoolIsNil, err)
 }
 
-func (ts *TestINodePoolSuite) TestStartFailedWithDriverStartError() {
+func (ts *testINodePoolSuite) TestStartFailedWithDriverStartError() {
 	expectErr := errors.New("driver start error")
 	md := &MockDriver{
 		StartFunc: func(context.Context) error {
@@ -190,7 +78,7 @@ func (ts *TestINodePoolSuite) TestStartFailedWithDriverStartError() {
 	ts.Equal(expectErr, np.Start(context.Background()))
 }
 
-func (ts *TestINodePoolSuite) TestStartFailedWithDriverGetNodesError() {
+func (ts *testINodePoolSuite) TestStartFailedWithDriverGetNodesError() {
 	expectErr := errors.New("driver get nodes error")
 	md := &MockDriver{
 		GetNodesFunc: func(ctx context.Context) ([]string, error) {
@@ -206,6 +94,6 @@ func (ts *TestINodePoolSuite) TestStartFailedWithDriverGetNodesError() {
 }
 
 func TestTestINodePoolSuite(t *testing.T) {
-	s := new(TestINodePoolSuite)
+	s := new(testINodePoolSuite)
 	suite.Run(t, s)
 }

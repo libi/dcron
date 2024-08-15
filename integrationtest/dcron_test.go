@@ -1,4 +1,4 @@
-package dcron_test
+package integrationtest
 
 import (
 	"fmt"
