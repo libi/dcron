@@ -1,4 +1,4 @@
-package integrationtest
+package main
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
+type Te struct{}
 type testINodePoolSuite struct {
 	suite.Suite
 
@@ -174,7 +175,7 @@ func (ts *testINodePoolSuite) TestCheckJobAvailableFailedWithNodePoolRingIsNil()
 	ts.Equal(dcron.ErrNodePoolIsNil, err)
 }
 
-func TestTestINodePoolSuite(t *testing.T) {
+func TestINodePoolTestSuite(t *testing.T) {
 	s := new(testINodePoolSuite)
 	suite.Run(t, s)
 }
