@@ -2,7 +2,7 @@
 
 function install_gocovmerge {
     echo "install gocovmerge"
-    go install github.com/alexfalkowski/gocovmerge@master
+    go install github.com/alexfalkowski/gocovmerge@v1.0.4
 }
 
 function run_integration_test {
