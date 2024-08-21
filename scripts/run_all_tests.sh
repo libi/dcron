@@ -7,7 +7,7 @@ function install_gocovmerge {
 
 function run_integration_test {
     cd integrationtest
-    ./run-integrationtest.sh
+    bash run-integrationtest.sh
     cd ..
 }
 
