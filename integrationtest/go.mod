@@ -3,7 +3,7 @@ module github.com/libi/dcron/integrationtest
 go 1.19
 
 replace (
-	github.com/libi/dcron v0.0.0 => ..
+	github.com/libi/dcron v0.0.0 => ../
 	github.com/libi/dcron/commons v0.0.0 => ../commons
 	github.com/libi/dcron/driver/etcddriver v0.0.0 => ../driver/etcddriver
 	github.com/libi/dcron/driver/redisdriver v0.0.0 => ../driver/redisdriver
