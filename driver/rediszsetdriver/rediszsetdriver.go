@@ -1,4 +1,4 @@
-package driver
+package rediszsetdriver
 
 import (
 	"context"
@@ -8,8 +8,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libi/dcron/dlog"
+	"github.com/libi/dcron/commons"
+	"github.com/libi/dcron/commons/dlog"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	redisDefaultTimeout = 5 * time.Second
 )
 
 type RedisZSetDriver struct {
@@ -28,7 +33,7 @@ type RedisZSetDriver struct {
 	sync.Mutex
 }
 
-func newRedisZSetDriver(redisClient redis.UniversalClient) *RedisZSetDriver {
+func NewDriver(redisClient redis.UniversalClient) *RedisZSetDriver {
 	rd := &RedisZSetDriver{
 		c: redisClient,
 		logger: &dlog.StdLogger{
@@ -40,9 +45,9 @@ func newRedisZSetDriver(redisClient redis.UniversalClient) *RedisZSetDriver {
 	return rd
 }
 
-func (rd *RedisZSetDriver) Init(serviceName string, opts ...Option) {
+func (rd *RedisZSetDriver) Init(serviceName string, opts ...commons.Option) {
 	rd.serviceName = serviceName
-	rd.nodeID = GetNodeId(serviceName)
+	rd.nodeID = commons.GetNodeId(serviceName)
 	for _, opt := range opts {
 		rd.WithOption(opt)
 	}
@@ -55,8 +60,8 @@ func (rd *RedisZSetDriver) NodeID() string {
 func (rd *RedisZSetDriver) GetNodes(ctx context.Context) (nodes []string, err error) {
 	rd.Lock()
 	defer rd.Unlock()
-	sliceCmd := rd.c.ZRangeByScore(ctx, GetKeyPre(rd.serviceName), &redis.ZRangeBy{
-		Min: fmt.Sprintf("%d", TimePre(time.Now(), rd.timeout)),
+	sliceCmd := rd.c.ZRangeByScore(ctx, commons.GetKeyPre(rd.serviceName), &redis.ZRangeBy{
+		Min: fmt.Sprintf("%d", commons.TimePre(time.Now(), rd.timeout)),
 		Max: "+inf",
 	})
 	if err = sliceCmd.Err(); err != nil {
@@ -95,15 +100,15 @@ func (rd *RedisZSetDriver) Stop(ctx context.Context) (err error) {
 	return
 }
 
-func (rd *RedisZSetDriver) WithOption(opt Option) (err error) {
+func (rd *RedisZSetDriver) WithOption(opt commons.Option) (err error) {
 	switch opt.Type() {
-	case OptionTypeTimeout:
+	case commons.OptionTypeTimeout:
 		{
-			rd.timeout = opt.(TimeoutOption).timeout
+			rd.timeout = opt.(commons.TimeoutOption).Timeout
 		}
-	case OptionTypeLogger:
+	case commons.OptionTypeLogger:
 		{
-			rd.logger = opt.(LoggerOption).logger
+			rd.logger = opt.(commons.LoggerOption).Logger
 		}
 	}
 	return
@@ -133,7 +138,7 @@ func (rd *RedisZSetDriver) heartBeat() {
 }
 
 func (rd *RedisZSetDriver) registerServiceNode() error {
-	return rd.c.ZAdd(context.Background(), GetKeyPre(rd.serviceName), redis.Z{
+	return rd.c.ZAdd(context.Background(), commons.GetKeyPre(rd.serviceName), redis.Z{
 		Score:  float64(time.Now().Unix()),
 		Member: rd.nodeID,
 	}).Err()

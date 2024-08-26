@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/commons/dlog"
+	"github.com/libi/dcron/driver/redisdriver"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -62,7 +62,7 @@ func main() {
 	redisCli := redis.NewClient(&redis.Options{
 		Addr: *addr,
 	})
-	driver := driver.NewRedisDriver(redisCli)
+	driver := redisdriver.NewDriver(redisCli)
 	logger := &dlog.StdLogger{
 		Log:        log.New(os.Stdout, "["+*subId+"]", log.LstdFlags),
 		LogVerbose: true,

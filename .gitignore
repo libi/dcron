@@ -3,3 +3,4 @@
 bin/
 coverage.txt
 coverage.html
+cov/

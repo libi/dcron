@@ -3,7 +3,7 @@ package dcron_test
 import (
 	"context"
 
-	"github.com/libi/dcron/driver"
+	"github.com/libi/dcron/commons"
 )
 
 // This is a mock driver used for unit test.
@@ -13,7 +13,7 @@ type MockDriver struct {
 	GetNodesFunc func(context.Context) ([]string, error)
 }
 
-func (md *MockDriver) Init(serviceName string, opts ...driver.Option) {}
+func (md *MockDriver) Init(serviceName string, opts ...commons.Option) {}
 
 func (md *MockDriver) NodeID() string {
 	return ""
@@ -37,6 +37,6 @@ func (md *MockDriver) Stop(ctx context.Context) (err error) {
 	return
 }
 
-func (md *MockDriver) WithOption(opt driver.Option) (err error) {
+func (md *MockDriver) WithOption(opt commons.Option) (err error) {
 	return
 }

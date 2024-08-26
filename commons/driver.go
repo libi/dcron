@@ -1,11 +1,6 @@
-package driver
+package commons
 
-import (
-	"context"
-
-	redis "github.com/redis/go-redis/v9"
-	clientv3 "go.etcd.io/etcd/client/v3"
-)
+import "context"
 
 // There is only one driver for one dcron.
 // Tips for write a user-defined Driver by yourself.
@@ -28,16 +23,4 @@ type DriverV2 interface {
 	Stop(ctx context.Context) (err error)
 
 	WithOption(opt Option) (err error)
-}
-
-func NewRedisDriver(redisClient redis.UniversalClient) DriverV2 {
-	return newRedisDriver(redisClient)
-}
-
-func NewEtcdDriver(etcdCli *clientv3.Client) DriverV2 {
-	return newEtcdDriver(etcdCli)
-}
-
-func NewRedisZSetDriver(redisClient redis.UniversalClient) DriverV2 {
-	return newRedisZSetDriver(redisClient)
 }
