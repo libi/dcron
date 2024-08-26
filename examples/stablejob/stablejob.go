@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/driver/redisdriver"
 	examplesCommon "github.com/libi/dcron/examples/common"
 	"github.com/redis/go-redis/v9"

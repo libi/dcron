@@ -4,7 +4,6 @@ go 1.19
 
 replace (
 	github.com/libi/dcron v0.0.0 => ../
-	github.com/libi/dcron/commons v0.0.0 => ../commons
 	github.com/libi/dcron/driver/etcddriver v0.0.0 => ../driver/etcddriver
 	github.com/libi/dcron/driver/redisdriver v0.0.0 => ../driver/redisdriver
 	github.com/libi/dcron/driver/rediszsetdriver v0.0.0 => ../driver/rediszsetdriver
@@ -13,7 +12,7 @@ replace (
 require (
 	github.com/alicebob/miniredis/v2 v2.33.0
 	github.com/libi/dcron v0.0.0
-	github.com/libi/dcron/commons v0.0.0
+	github.com/dcron-contrib/commons v0.0.2
 	github.com/libi/dcron/driver/etcddriver v0.0.0
 	github.com/libi/dcron/driver/redisdriver v0.0.0
 	github.com/libi/dcron/driver/rediszsetdriver v0.0.0

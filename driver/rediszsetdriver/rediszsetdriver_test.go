@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/libi/dcron/commons"
-	"github.com/libi/dcron/commons/dlog"
+	"github.com/dcron-contrib/commons"
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron/driver/rediszsetdriver"
 
 	redis "github.com/redis/go-redis/v9"

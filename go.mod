@@ -2,10 +2,8 @@ module github.com/libi/dcron
 
 go 1.19
 
-replace github.com/libi/dcron/commons => ./commons
-
 require (
-	github.com/libi/dcron/commons v0.6.0-dev.2
+	github.com/dcron-contrib/commons v0.0.2
 	github.com/stretchr/testify v1.9.0
 )
 
