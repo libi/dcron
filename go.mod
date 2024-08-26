@@ -2,12 +2,12 @@ module github.com/libi/dcron
 
 go 1.19
 
+replace github.com/libi/dcron/commons => ./commons
+
 require (
 	github.com/libi/dcron/commons v0.6.0-dev.2
 	github.com/stretchr/testify v1.9.0
 )
-
-replace github.com/libi/dcron/commons v0.6.0-dev.2 => ./commons
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
