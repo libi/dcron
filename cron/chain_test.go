@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libi/dcron/commons/dlog"
+	"github.com/dcron-contrib/commons/dlog"
 )
 
 func appendingJob(slice *[]int, value int) Job {

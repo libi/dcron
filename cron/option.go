@@ -3,7 +3,7 @@ package cron
 import (
 	"time"
 
-	"github.com/libi/dcron/commons/dlog"
+	"github.com/dcron-contrib/commons/dlog"
 )
 
 // Option represents a modification to the default behavior of a Cron.

@@ -3,7 +3,7 @@ package dcron_test
 import (
 	"context"
 
-	"github.com/libi/dcron/commons"
+	"github.com/dcron-contrib/commons"
 )
 
 // This is a mock driver used for unit test.

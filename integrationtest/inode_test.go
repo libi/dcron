@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/dcron-contrib/commons"
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/commons"
-	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
 	"github.com/libi/dcron/driver/etcddriver"
 	"github.com/libi/dcron/driver/redisdriver"

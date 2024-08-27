@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libi/dcron/commons"
-	"github.com/libi/dcron/commons/dlog"
+	"github.com/dcron-contrib/commons"
+	"github.com/dcron-contrib/commons/dlog"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )

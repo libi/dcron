@@ -3,11 +3,9 @@ module github.com/libi/dcron
 go 1.19
 
 require (
-	github.com/libi/dcron/commons v0.6.0-dev.2
+	github.com/dcron-contrib/commons v0.0.2
 	github.com/stretchr/testify v1.9.0
 )
-
-replace github.com/libi/dcron/commons v0.6.0-dev.2 => ./commons
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

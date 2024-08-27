@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libi/dcron/commons/dlog"
+	"github.com/dcron-contrib/commons/dlog"
 )
 
 // Many tests schedule a job for every second, and then wait at most a second

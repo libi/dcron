@@ -3,7 +3,7 @@ package dcron
 import (
 	"time"
 
-	"github.com/libi/dcron/commons/dlog"
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron/cron"
 )
 

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
 	"github.com/stretchr/testify/suite"
 )
