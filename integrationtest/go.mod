@@ -11,8 +11,8 @@ replace (
 
 require (
 	github.com/alicebob/miniredis/v2 v2.33.0
-	github.com/libi/dcron v0.0.0
 	github.com/dcron-contrib/commons v0.0.2
+	github.com/libi/dcron v0.0.0
 	github.com/libi/dcron/driver/etcddriver v0.0.0
 	github.com/libi/dcron/driver/redisdriver v0.0.0
 	github.com/libi/dcron/driver/rediszsetdriver v0.0.0
@@ -39,7 +39,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
