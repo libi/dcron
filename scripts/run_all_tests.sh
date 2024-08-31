@@ -22,5 +22,5 @@ install_gocovmerge
 run_integration_test
 run_unit_test
 
-gocovmerge cov/coverage.txt driver/etcddriver/cov/coverage.txt driver/redisdriver/cov/coverage.txt driver/rediszsetdriver/cov/coverage.txt integrationtest/cov/coverage.txt > coverage.txt
+gocovmerge cov/coverage.txt integrationtest/cov/coverage.txt > coverage.txt
 
