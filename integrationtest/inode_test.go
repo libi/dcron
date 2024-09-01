@@ -9,11 +9,10 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/dcron-contrib/commons"
 	"github.com/dcron-contrib/commons/dlog"
+	"github.com/dcron-contrib/etcddriver"
+	"github.com/dcron-contrib/redisdriver"
 	"github.com/libi/dcron"
 	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/driver/etcddriver"
-	"github.com/libi/dcron/driver/redisdriver"
-	"github.com/libi/dcron/driver/rediszsetdriver"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -85,7 +84,7 @@ func (ts *testINodePoolSuite) declareRedisZSetDrivers(clients *[]*redis.Client, 
 		*clients = append(*clients, redis.NewClient(&redis.Options{
 			Addr: ts.rds.Addr(),
 		}))
-		*drivers = append(*drivers, rediszsetdriver.NewDriver((*clients)[i]))
+		*drivers = append(*drivers, redisdriver.NewZSetDriver((*clients)[i]))
 	}
 }
 

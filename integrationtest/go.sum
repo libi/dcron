@@ -40,6 +40,10 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dcron-contrib/commons v0.0.2 h1:34Sg0eXKwmMLcg5klVGeyMOE0zI40IpyDLQtLvCnQIQ=
 github.com/dcron-contrib/commons v0.0.2/go.mod h1:MqbyO19gFY5K5sTWYCGlu8EwybFrEz/Pt8ZW1A4uMjo=
+github.com/dcron-contrib/etcddriver v0.0.0-20240829113352-6f5821facf17 h1:w4syKLnN94UifYrL9f5MwB7C2pDCeWer58cw+6YUkMo=
+github.com/dcron-contrib/etcddriver v0.0.0-20240829113352-6f5821facf17/go.mod h1:jAlZZfZA/NFSggrPloFQvZBGSPoEzPKKiEz4CPpBkUY=
+github.com/dcron-contrib/redisdriver v0.0.0-20240830124149-3f15fcb79061 h1:AP/WOnQGxR1Y+NTkakwv4qFaVh4kbggmsltHdRkYAVA=
+github.com/dcron-contrib/redisdriver v0.0.0-20240830124149-3f15fcb79061/go.mod h1:lIw20l5agMWjFH7BwAM5QJgI/9v14b3tj1OLsKj/YLU=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=

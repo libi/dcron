@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/dcron-contrib/commons/dlog"
+	"github.com/dcron-contrib/redisdriver"
 	"github.com/google/uuid"
 	"github.com/libi/dcron"
-	"github.com/libi/dcron/driver/redisdriver"
 	"github.com/redis/go-redis/v9"
 )
 
