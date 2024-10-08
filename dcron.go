@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dcron-contrib/commons"
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron/cron"
-	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
 )
 
 const (
@@ -59,7 +59,7 @@ type Dcron struct {
 }
 
 // NewDcron create a Dcron
-func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option) *Dcron {
+func NewDcron(serverName string, driver commons.DriverV2, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
 	dcron.cr = cron.New(cronOpts...)
@@ -69,7 +69,7 @@ func NewDcron(serverName string, driver driver.DriverV2, cronOpts ...cron.Option
 }
 
 // NewDcronWithOption create a Dcron with Dcron Option
-func NewDcronWithOption(serverName string, driver driver.DriverV2, dcronOpts ...Option) *Dcron {
+func NewDcronWithOption(serverName string, driver commons.DriverV2, dcronOpts ...Option) *Dcron {
 	dcron := newDcron(serverName)
 	for _, opt := range dcronOpts {
 		opt(dcron)
@@ -280,19 +280,22 @@ func (d *Dcron) startNodePool() error {
 	return nil
 }
 
-// Stop job
-func (d *Dcron) Stop() {
+// This function is to Stop the dcron.
+// Stop stops the cron scheduler if it is running; otherwise it does nothing.
+// A context is returned so the caller can wait for running jobs to complete.
+func (d *Dcron) Stop() context.Context {
 	tick := time.NewTicker(time.Millisecond)
 	if !d.runningLocally {
 		d.nodePool.Stop(context.Background())
 	}
 	for range tick.C {
 		if atomic.CompareAndSwapInt32(&d.running, dcronRunning, dcronStopped) {
-			d.cr.Stop()
 			d.logger.Infof("dcron stopped")
-			return
+			return d.cr.Stop()
 		}
 	}
+	// We ensure this function won't return nil.
+	return nil
 }
 
 func (d *Dcron) reRunRecentJobs(jobNames []string) {

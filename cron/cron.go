@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libi/dcron/dlog"
+	"github.com/dcron-contrib/commons/dlog"
 )
 
 // Cron keeps track of any number of entries, invoking the associated func as

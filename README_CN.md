@@ -35,7 +35,7 @@ a lightweight distributed job scheduler  library based on redis or etcd
 redisCli := redis.NewClient(&redis.Options{
   Addr: DefaultRedisAddr,
 })
-drv := driver.NewRedisDriver(redisCli)
+drv := redisdriver.NewDriver(redisCli)
 dcron := NewDcron("server1", drv)
 ```
 当然，如果你可以自己实现一个自定义的Driver也是可以的，只需要实现[DriverV2](driver/driver.go)接口即可。
@@ -55,6 +55,9 @@ dcron.Start()
 // 使用当前协程同步启动任务，会阻塞当前协程后续逻辑执行
 dcron.Run()
 ```
+### Drivers
+
+在v0.6.0版本之后，Dcron将所有的driver从主仓库拆分，并放置在独立仓库进行维护, 详见 [dcron-contrib](https://github.com/dcron-contrib)
 
 ### 使用案例
 - [examples](examples/)

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/libi/dcron/dlog"
+	"github.com/dcron-contrib/commons/dlog"
 )
 
 // DefaultLogger is used by Cron if none is specified.

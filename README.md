@@ -37,7 +37,7 @@ If use distributed-lock to implement it. I will depends on the system-time of ea
 redisCli := redis.NewClient(&redis.Options{
   Addr: DefaultRedisAddr,
 })
-drv := driver.NewRedisDriver(redisCli)
+drv := redisdriver.NewDriver(redisCli)
 dcron := NewDcron("server1", drv)
 ```
 2. Use cron-language to add task, you should set the `TaskName`, the `TaskName` is the primary-key of each task.
@@ -55,6 +55,10 @@ dcron.Start()
 // blocking start.
 dcron.Run()
 ```
+### Drivers
+
+After v0.6.0, We split out Dcron's drivers like etcddriver and redisdriver from main repo, and maintain them in independent repos. For details, please refer to [dcron-contrib](https://github.com/dcron-contrib).
+
 
 ### Example
 - [examples](examples/)

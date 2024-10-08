@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dcron-contrib/commons"
+	"github.com/dcron-contrib/commons/dlog"
 	"github.com/libi/dcron/consistenthash"
-	"github.com/libi/dcron/dlog"
-	"github.com/libi/dcron/driver"
 )
 
 const (
@@ -36,7 +36,7 @@ type NodePool struct {
 	rwMut sync.RWMutex
 	nodes *consistenthash.Map
 
-	driver         driver.DriverV2
+	driver         commons.DriverV2
 	hashReplicas   int
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
@@ -51,7 +51,7 @@ type NodePool struct {
 
 func NewNodePool(
 	serviceName string,
-	drv driver.DriverV2,
+	drv commons.DriverV2,
 	updateDuration time.Duration,
 	hashReplicas int,
 	logger dlog.Logger,
@@ -70,8 +70,8 @@ func NewNodePool(
 		np.logger = logger
 	}
 	np.driver.Init(serviceName,
-		driver.NewTimeoutOption(updateDuration),
-		driver.NewLoggerOption(np.logger))
+		commons.NewTimeoutOption(updateDuration),
+		commons.NewLoggerOption(np.logger))
 	return np
 }
 
