@@ -16,7 +16,7 @@ to select the node which can execute the task.
 
 ### Why not use distributed-lock?
 
-If use distributed-lock to implement it. I will depends on the system-time of each node. There are some problems when the system-time is not synchronous: 
+If use distributed-lock to implement it, it will depends on the system-time of each node. There are some problems when the system-time is not synchronous: 
 1. If the task executing time is shorter than the system time, the task will be excuted again. (some node unlock after execution, but the lock will be locked by the other node which reach the execution time)
 
 2. Whatever there is only a little miss in system time, the most fast node will catch the lock in the first time. It will cause a thing that all the task will be executed only by the most fast node.
