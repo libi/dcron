@@ -8,6 +8,10 @@
 
 请在 Fork 本项目时，不要勾选 **Copy the master branch only**，其他分支或许你用得到
 
+# 格式注意事项
+
+请保证提交的每一行都不以`\r\n`结尾
+
 # Pull Request 提交规范
 ## 1. BugFix
 Bugfix PR请以master分支为基础分支，在通过代码review后合入master

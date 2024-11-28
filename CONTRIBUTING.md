@@ -8,6 +8,10 @@ Thank you for everyone join DCRON project, before you adding one issue or creati
 
 Please don't check the **Copy the master branch only** when you fork this project, you may use them in the future. 
 
+# Format tips
+
+Please confirm every line in your commit files don't have `\r\n` in the end of line.
+
 # Pull Request Submit Specifications
 ## 1. BugFix
 Bugfix PR should base on master branch, and it will be merged into master.
