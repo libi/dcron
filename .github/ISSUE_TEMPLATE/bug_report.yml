@@ -18,8 +18,6 @@ body:
     attributes:
       label: Initial checklist
       options:
-        # - label: I agree to follow the [code of conduct](https://github.com/libi/dcron/blob/main/CODE_OF_CONDUCT.md)
-        #   required: true
         - label: I searched [issues](https://github.com/libi/dcron/issues) and [discussions](https://github.com/libi/dcron/discussions) and couldn’t find anything (or linked relevant results below)
           required: true
 
